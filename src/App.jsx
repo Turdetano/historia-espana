@@ -201,125 +201,71 @@ export default function App() {
     ? articles
     : articles.filter(a => a.category === filter);
 
-  return (
+  // 🔽 SOLO TE PONGO EL RETURN MODIFICADO (EL RESTO NO SE TOCA)
+
+return (
   <div style={{ background:"#020617", color:"#e2e8f0", minHeight:"100vh", padding:20 }}>
     <h1 style={{ textAlign:"center", fontSize:32 }}>📜 Historia de España</h1>
 
     {!user ? (
-      <button
-        onClick={login}
-        style={{
-          background:"#2563eb",
-          color:"#fff",
-          padding:"10px 20px",
-          borderRadius:8,
-          border:"none",
-          cursor:"pointer",
-          display:"block",
-          margin:"20px auto"
-        }}
-      >
+      <button onClick={login} style={{
+        background:"#2563eb", color:"#fff", padding:"10px 20px",
+        borderRadius:8, border:"none", cursor:"pointer", display:"block", margin:"20px auto"
+      }}>
         Acceder con Google
       </button>
     ) : (
       <div style={{ textAlign:"center" }}>
         <p>Bienvenido 👑 {user.email}</p>
-        <button
-          onClick={logout}
-          style={{
-            background:"#dc2626",
-            color:"#fff",
-            padding:"8px 16px",
-            borderRadius:8,
-            border:"none",
-            cursor:"pointer"
-          }}
-        >
+        <button onClick={logout} style={{
+          background:"#dc2626", color:"#fff", padding:"8px 16px",
+          borderRadius:8, border:"none", cursor:"pointer"
+        }}>
           Cerrar sesión
         </button>
       </div>
     )}
 
+    {/* 🔽 FILTRO CATEGORÍAS */}
+    <div style={{ marginTop:20 }}>
+      <select onChange={e => setFilter(e.target.value)}>
+        <option value="Todas">Todas</option>
+        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+      </select>
+    </div>
+
+    {/* 🔽 FORMULARIO */}
+    {isEditor && (
+      <div style={{ marginTop:20 }}>
+        <h2>✍️ Crear / Editar artículo</h2>
+
+        <input
+          placeholder="Título"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+        />
+
+        <textarea
+          placeholder="Contenido"
+          value={content}
+          onChange={e => setContent(e.target.value)}
+        />
+
+        <select onChange={e => setCategory(e.target.value)} value={category}>
+          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+        </select>
+
+        <input type="file" onChange={e => setSelectedImage(e.target.files[0])} />
+
+        {!editingId ? (
+          <button onClick={publish}>Publicar</button>
+        ) : (
+          <button onClick={saveEdit}>Guardar cambios</button>
+        )}
+      </div>
+    )}
+
+    {/* 🔽 DASHBOARD */}
     {isAdmin && stats && (
       <div style={{ marginTop:20 }}>
-        <h2>📊 Dashboard</h2>
-        <p>Artículos: {stats.totalArticles}</p>
-        <p>Usuarios: {stats.totalUsers}</p>
-      </div>
-    )}
-
-    {isAdmin && (
-      <div style={{ marginTop:20 }}>
-        <h2>Usuarios</h2>
-        {usersList.map(u => (
-          <div key={u.id} style={{ marginBottom:10 }}>
-            {u.email} - {u.role}
-            <select onChange={e => changeRole(u.id, e.target.value)}>
-              <option>user</option>
-              <option>editor</option>
-              <option>admin</option>
-            </select>
-          </div>
-        ))}
-      </div>
-    )}
-
-    {isAdmin && (
-      <div style={{ marginTop:20 }}>
-        <h2>Historial</h2>
-        {history.map(h => (
-          <div key={h.id} style={{ marginBottom:10 }}>
-            {h.title}
-            <button
-              onClick={() => {
-                setSelectedHistory(h);
-                const current = articles.find(a => a.id === h.articleId);
-                if (current) setDiffView(getDiff(h.content, current.content));
-              }}
-              style={{ marginLeft:10 }}
-            >
-              Ver
-            </button>
-            <button
-              onClick={() => restoreVersion(h)}
-              style={{ marginLeft:10 }}
-            >
-              Restaurar
-            </button>
-          </div>
-        ))}
-        {diffView && <p>{diffView}</p>}
-      </div>
-    )}
-
-    <div style={{ marginTop:30 }}>
-      {filtered.map(a => (
-        <div key={a.id} style={{
-          background:"#0f172a",
-          padding:15,
-          borderRadius:10,
-          marginBottom:15
-        }}>
-          <h3>{a.title}</h3>
-          <p>{a.content}</p>
-          {isEditor && (
-            <button
-              onClick={() => remove(a.id)}
-              style={{
-                background:"#dc2626",
-                color:"#fff",
-                padding:"6px 12px",
-                borderRadius:6,
-                border:"none",
-                cursor:"pointer"
-              }}
-            >
-              Eliminar
-            </button>
-          )}
-        </div>
-      ))}
-    </div>
-  </div>
-  );
-}
+        <h2>📊 Dashboard</h2
