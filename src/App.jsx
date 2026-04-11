@@ -202,70 +202,123 @@ export default function App() {
     : articles.filter(a => a.category === filter);
 
   return (
-    <div style={{ background:"#020617", color:"#e2e8f0", minHeight:"100vh", padding:20 }}>
-      <h1 style={{ textAlign:"center", fontSize:32 }}>📜 Historia de España</h1>
+  <div style={{ background:"#020617", color:"#e2e8f0", minHeight:"100vh", padding:20 }}>
+    <h1 style={{ textAlign:"center", fontSize:32 }}>📜 Historia de España</h1>
 
-      {!user ? (
-        <button onClick={login}>Acceder</button>
-      ) : (
-        <>
-          <p>Bienvenido 👑</p>
-          <button onClick={logout}>Cerrar sesión</button>
-        </>
-      )}
+    {!user ? (
+      <button
+        onClick={login}
+        style={{
+          background:"#2563eb",
+          color:"#fff",
+          padding:"10px 20px",
+          borderRadius:8,
+          border:"none",
+          cursor:"pointer",
+          display:"block",
+          margin:"20px auto"
+        }}
+      >
+        Acceder con Google
+      </button>
+    ) : (
+      <div style={{ textAlign:"center" }}>
+        <p>Bienvenido 👑 {user.email}</p>
+        <button
+          onClick={logout}
+          style={{
+            background:"#dc2626",
+            color:"#fff",
+            padding:"8px 16px",
+            borderRadius:8,
+            border:"none",
+            cursor:"pointer"
+          }}
+        >
+          Cerrar sesión
+        </button>
+      </div>
+    )}
 
-      {isAdmin && stats && (
-        <div>
-          <h2>📊 Dashboard</h2>
-          <p>Artículos: {stats.totalArticles}</p>
-          <p>Usuarios: {stats.totalUsers}</p>
-        </div>
-      )}
+    {isAdmin && stats && (
+      <div style={{ marginTop:20 }}>
+        <h2>📊 Dashboard</h2>
+        <p>Artículos: {stats.totalArticles}</p>
+        <p>Usuarios: {stats.totalUsers}</p>
+      </div>
+    )}
 
-      {isAdmin && (
-        <div>
-          <h2>Usuarios</h2>
-          {usersList.map(u => (
-            <div key={u.id}>
-              {u.email} - {u.role}
-              <select onChange={e => changeRole(u.id, e.target.value)}>
-                <option>user</option>
-                <option>editor</option>
-                <option>admin</option>
-              </select>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {isAdmin && (
-        <div>
-          <h2>Historial</h2>
-          {history.map(h => (
-            <div key={h.id}>
-              {h.title}
-              <button onClick={() => {
-                setSelectedHistory(h);
-                const current = articles.find(a => a.id === h.articleId);
-                if (current) setDiffView(getDiff(h.content, current.content));
-              }}>Ver</button>
-              <button onClick={() => restoreVersion(h)}>Restaurar</button>
-            </div>
-          ))}
-
-          {diffView && <p>{diffView}</p>}
-        </div>
-      )}
-
-      <div>
-        {filtered.map(a => (
-          <div key={a.id}>
-            <h3>{a.title}</h3>
-            <p>{a.content}</p>
-            {isEditor && <button onClick={() => remove(a.id)}>Eliminar</button>}
+    {isAdmin && (
+      <div style={{ marginTop:20 }}>
+        <h2>Usuarios</h2>
+        {usersList.map(u => (
+          <div key={u.id} style={{ marginBottom:10 }}>
+            {u.email} - {u.role}
+            <select onChange={e => changeRole(u.id, e.target.value)}>
+              <option>user</option>
+              <option>editor</option>
+              <option>admin</option>
+            </select>
           </div>
         ))}
       </div>
+    )}
+
+    {isAdmin && (
+      <div style={{ marginTop:20 }}>
+        <h2>Historial</h2>
+        {history.map(h => (
+          <div key={h.id} style={{ marginBottom:10 }}>
+            {h.title}
+            <button
+              onClick={() => {
+                setSelectedHistory(h);
+                const current = articles.find(a => a.id === h.articleId);
+                if (current) setDiffView(getDiff(h.content, current.content));
+              }}
+              style={{ marginLeft:10 }}
+            >
+              Ver
+            </button>
+            <button
+              onClick={() => restoreVersion(h)}
+              style={{ marginLeft:10 }}
+            >
+              Restaurar
+            </button>
+          </div>
+        ))}
+        {diffView && <p>{diffView}</p>}
+      </div>
+    )}
+
+    <div style={{ marginTop:30 }}>
+      {filtered.map(a => (
+        <div key={a.id} style={{
+          background:"#0f172a",
+          padding:15,
+          borderRadius:10,
+          marginBottom:15
+        }}>
+          <h3>{a.title}</h3>
+          <p>{a.content}</p>
+          {isEditor && (
+            <button
+              onClick={() => remove(a.id)}
+              style={{
+                background:"#dc2626",
+                color:"#fff",
+                padding:"6px 12px",
+                borderRadius:6,
+                border:"none",
+                cursor:"pointer"
+              }}
+            >
+              Eliminar
+            </button>
+          )}
+        </div>
+      ))}
     </div>
-  );
-}
+  </div>
+);
