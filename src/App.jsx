@@ -36,6 +36,7 @@ export default function App() {
   const [category, setCategory] = useState(CATEGORIES[0]);
 
   const [filter, setFilter] = useState("Todas");
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     onAuthStateChanged(auth, async (u) => {
