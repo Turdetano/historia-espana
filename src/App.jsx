@@ -67,10 +67,55 @@ export default function App() {
       content,
       category,
       date: new Date().toLocaleDateString(),
-      author: user.email
+      author: user?.email || "anon"
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
     setArticles([...articles, { ...art, id: ref.id }]);
 
-   
+    setTitle("");
+    setContent("");
+    setEditingId(null);
+  };
+
+  const startEdit = (a) => {
+    setTitle(a.title);
+    setContent(a.content);
+    setCategory(a.category);
+    setEditingId(a.id);
+  };
+
+  const saveEdit = async () => {
+    await updateDoc(doc(db, "articles", editingId), {
+      title,
+      content,
+      category
+    });
+    window.location.reload();
+  };
+
+  const remove = async (id) => {
+    await deleteDoc(doc(db, "articles", id));
+    setArticles(articles.filter(a => a.id !== id));
+  };
+
+  const login = () => signInWithPopup(auth, provider);
+  const logout = () => signOut(auth);
+
+  const filtered = filter === "Todas"
+    ? articles
+    : articles.filter(a => a.category === filter);
+
+  return (
+    <div style={{ display:"flex", minHeight:"100vh", background:"#020617", color:"#e2e8f0" }}>
+
+      <div style={{
+        width:"250px",
+        padding:20,
+        borderRight:"1px solid #1e293b"
+      }}>
+        <h2>📚 Navegación</h2>
+
+        <select onChange={e => setFilter(e.target.value)}>
+          <option value="Todas">Todas</option>
+          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
