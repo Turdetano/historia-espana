@@ -114,8 +114,8 @@ export default function App() {
   const logout = () => signOut(auth);
 
   return (
-    <div style={{ background:"#0f172a", color:"#fff", minHeight:"100vh", padding:20 }}>
-      <h1 style={{ textAlign:"center" }}>📜 Historia de España</h1>
+    <div style={{ background:"#f8fafc", color:"#1e293b", minHeight:"100vh", padding:20 }}>
+      <h1 style={{ textAlign:"center", color:"#0f172a" }}>📜 Historia de España</h1>
 
       {!user ? (
         <button
@@ -128,37 +128,59 @@ export default function App() {
             border:"none",
             cursor:"pointer",
             display:"block",
-            margin:"20px auto"
+            margin:"20px auto",
+            fontWeight:"bold"
           }}
         >
           Acceder con Google
         </button>
       ) : (
-        <div style={{ textAlign:"center" }}>
-          <p>{user.email}</p>
-          <button onClick={logout}>Cerrar sesión</button>
+        <div style={{ textAlign:"center", marginBottom:20 }}>
+          <p><strong>{user.email}</strong></p>
+          <button
+            onClick={logout}
+            style={{
+              background:"#ef4444",
+              color:"#fff",
+              padding:"8px 16px",
+              borderRadius:6,
+              border:"none",
+              cursor:"pointer"
+            }}
+          >
+            Cerrar sesión
+          </button>
         </div>
       )}
 
       {isEditor && (
-        <div style={{ marginTop:20 }}>
-          <h2>✍️ {editingId ? "Editar artículo" : "Crear artículo"}</h2>
+        <div style={{
+          marginTop:20,
+          background:"#ffffff",
+          padding:20,
+          borderRadius:10,
+          boxShadow:"0 2px 6px rgba(0,0,0,0.1)"
+        }}>
+          <h2>{editingId ? "✏️ Editar artículo" : "✍️ Crear artículo"}</h2>
 
           <input
             placeholder="Título"
             value={title}
             onChange={e => setTitle(e.target.value)}
+            style={{ width:"100%", marginBottom:10, padding:8 }}
           />
 
           <textarea
             placeholder="Contenido"
             value={content}
             onChange={e => setContent(e.target.value)}
+            style={{ width:"100%", marginBottom:10, padding:8, minHeight:100 }}
           />
 
           <select
             value={category}
             onChange={e => setCategory(e.target.value)}
+            style={{ marginBottom:10, padding:8 }}
           >
             {CATEGORIES.map(c => (
               <option key={c}>{c}</option>
@@ -166,11 +188,17 @@ export default function App() {
           </select>
 
           {!editingId ? (
-            <button onClick={publish}>Publicar</button>
+            <button style={{ background:"#16a34a", color:"#fff", padding:"8px 16px", border:"none", borderRadius:6 }} onClick={publish}>
+              Publicar
+            </button>
           ) : (
             <>
-              <button onClick={saveEdit}>Guardar cambios</button>
-              <button onClick={cancelEdit}>Cancelar</button>
+              <button style={{ background:"#2563eb", color:"#fff", padding:"8px 16px", border:"none", borderRadius:6 }} onClick={saveEdit}>
+                Guardar
+              </button>
+              <button style={{ marginLeft:10 }} onClick={cancelEdit}>
+                Cancelar
+              </button>
             </>
           )}
         </div>
@@ -179,20 +207,25 @@ export default function App() {
       <div style={{ marginTop:30 }}>
         {articles.map(a => (
           <div key={a.id} style={{
-            background:"#1e293b",
+            background:"#ffffff",
             padding:15,
             borderRadius:10,
-            marginBottom:15
+            marginBottom:15,
+            boxShadow:"0 2px 6px rgba(0,0,0,0.1)"
           }}>
             <h3>{a.title}</h3>
             <p>{a.content}</p>
             <small>{a.category}</small>
 
             {isEditor && (
-              <>
-                <button onClick={() => startEdit(a)}>Editar</button>
-                <button onClick={() => remove(a.id)}>Eliminar</button>
-              </>
+              <div style={{ marginTop:10 }}>
+                <button style={{ marginRight:10 }} onClick={() => startEdit(a)}>
+                  Editar
+                </button>
+                <button style={{ background:"#ef4444", color:"#fff", border:"none", padding:"6px 10px", borderRadius:6 }} onClick={() => remove(a.id)}>
+                  Eliminar
+                </button>
+              </div>
             )}
           </div>
         ))}
