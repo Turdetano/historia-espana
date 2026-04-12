@@ -40,14 +40,20 @@ export default function App() {
 
   useEffect(() => {
     onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        setRole(snap.exists() ? snap.data().role : "user");
-      }
-    });
-  }, []);
+  console.log("USER:", u);
 
+  setUser(u);
+
+  if (u) {
+    const snap = await getDoc(doc(db, "users", u.uid));
+    
+    console.log("DOC:", snap.data());
+
+    setRole(snap.exists() ? snap.data().role : "user");
+  } else {
+    setRole(null);
+  }
+});
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
