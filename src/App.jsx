@@ -35,25 +35,23 @@ export default function App() {
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
 
-  const [filter, setFilter] = useState("Todas");
-  const [editingId, setEditingId] = useState(null);
-
   useEffect(() => {
     onAuthStateChanged(auth, async (u) => {
-  console.log("USER:", u);
+      console.log("USER:", u);
 
-  setUser(u);
+      setUser(u);
 
-  if (u) {
-    const snap = await getDoc(doc(db, "users", u.uid));
-    
-    console.log("DOC:", snap.data());
+      if (u) {
+        const snap = await getDoc(doc(db, "users", u.uid));
+        console.log("DOC:", snap.data());
 
-    setRole(snap.exists() ? snap.data().role : "user");
-  } else {
-    setRole(null);
-  }
-});
+        setRole(snap.exists() ? snap.data().role : "user");
+      } else {
+        setRole(null);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -88,36 +86,36 @@ export default function App() {
   const login = () => signInWithPopup(auth, provider);
   const logout = () => signOut(auth);
 
-  const filtered =
-    filter === "Todas"
-      ? articles
-      : articles.filter(a => a.category === filter);
-
   return (
-    <div style={{ background:"#020617", color:"#e2e8f0", minHeight:"100vh", padding:20 }}>
+    <div style={{ background:"#0f172a", color:"#fff", minHeight:"100vh", padding:20 }}>
       <h1 style={{ textAlign:"center" }}>📜 Historia de España</h1>
 
       {!user ? (
-        <button onClick={login}>Acceder con Google</button>
+        <button
+          onClick={login}
+          style={{
+            background:"#2563eb",
+            color:"#fff",
+            padding:"12px 20px",
+            borderRadius:8,
+            border:"none",
+            cursor:"pointer",
+            display:"block",
+            margin:"20px auto"
+          }}
+        >
+          Acceder con Google
+        </button>
       ) : (
-        <div>
+        <div style={{ textAlign:"center" }}>
           <p>{user.email}</p>
           <button onClick={logout}>Cerrar sesión</button>
         </div>
       )}
 
-      <div style={{ marginTop:20 }}>
-        <select onChange={e => setFilter(e.target.value)}>
-          <option value="Todas">Todas</option>
-          {CATEGORIES.map(c => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
-      </div>
-
       {isEditor && (
         <div style={{ marginTop:20 }}>
-          <h2>Crear artículo</h2>
+          <h2>✍️ Crear artículo</h2>
 
           <input
             placeholder="Título"
@@ -144,14 +142,22 @@ export default function App() {
         </div>
       )}
 
-      <div style={{ marginTop:20 }}>
-        {filtered.map(a => (
-          <div key={a.id} style={{ marginBottom:10 }}>
+      <div style={{ marginTop:30 }}>
+        {articles.map(a => (
+          <div key={a.id} style={{
+            background:"#1e293b",
+            padding:15,
+            borderRadius:10,
+            marginBottom:15
+          }}>
             <h3>{a.title}</h3>
             <p>{a.content}</p>
+            <small>{a.category}</small>
 
             {isEditor && (
-              <button onClick={() => remove(a.id)}>Eliminar</button>
+              <button onClick={() => remove(a.id)}>
+                Eliminar
+              </button>
             )}
           </div>
         ))}
