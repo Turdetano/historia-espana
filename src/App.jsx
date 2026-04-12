@@ -35,16 +35,14 @@ export default function App() {
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
 
+  const [editingId, setEditingId] = useState(null);
+
   useEffect(() => {
     onAuthStateChanged(auth, async (u) => {
-      console.log("USER:", u);
-
       setUser(u);
 
       if (u) {
         const snap = await getDoc(doc(db, "users", u.uid));
-        console.log("DOC:", snap.data());
-
         setRole(snap.exists() ? snap.data().role : "user");
       } else {
         setRole(null);
@@ -74,6 +72,35 @@ export default function App() {
     const ref = await addDoc(collection(db, "articles"), art);
     setArticles([...articles, { ...art, id: ref.id }]);
 
+    setTitle("");
+    setContent("");
+  };
+
+  const startEdit = (article) => {
+    setEditingId(article.id);
+    setTitle(article.title);
+    setContent(article.content);
+    setCategory(article.category);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+
+    await updateDoc(doc(db, "articles", editingId), {
+      title,
+      content,
+      category
+    });
+
+    setEditingId(null);
+    setTitle("");
+    setContent("");
+
+    window.location.reload();
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
     setTitle("");
     setContent("");
   };
@@ -115,7 +142,7 @@ export default function App() {
 
       {isEditor && (
         <div style={{ marginTop:20 }}>
-          <h2>✍️ Crear artículo</h2>
+          <h2>✍️ {editingId ? "Editar artículo" : "Crear artículo"}</h2>
 
           <input
             placeholder="Título"
@@ -138,7 +165,14 @@ export default function App() {
             ))}
           </select>
 
-          <button onClick={publish}>Publicar</button>
+          {!editingId ? (
+            <button onClick={publish}>Publicar</button>
+          ) : (
+            <>
+              <button onClick={saveEdit}>Guardar cambios</button>
+              <button onClick={cancelEdit}>Cancelar</button>
+            </>
+          )}
         </div>
       )}
 
@@ -155,9 +189,10 @@ export default function App() {
             <small>{a.category}</small>
 
             {isEditor && (
-              <button onClick={() => remove(a.id)}>
-                Eliminar
-              </button>
+              <>
+                <button onClick={() => startEdit(a)}>Editar</button>
+                <button onClick={() => remove(a.id)}>Eliminar</button>
+              </>
             )}
           </div>
         ))}
