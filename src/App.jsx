@@ -26,7 +26,6 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 📸 SUBIR IMAGEN
 const uploadImage = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -44,7 +43,6 @@ const uploadImage = async (file) => {
   }
 };
 
-// 🕓 HISTORIAL
 const saveHistory = async (action, article, user) => {
   if (!article) return;
 
@@ -60,34 +58,13 @@ const saveHistory = async (action, article, user) => {
   });
 };
 
-// 📊 MÉTRICAS
-const getStats = (articles, users, history) => ({
-  totalArticles: articles.length,
-  totalUsers: users.length,
-  totalEdits: history.filter(h => h.action === "edit").length,
-  totalDeletes: history.filter(h => h.action === "delete").length
-});
-
-// 🧾 DIFF SIMPLE
-const getDiff = (oldText, newText) => {
-  if (!oldText || !newText) return "";
-  const oldWords = oldText.split(" ");
-  const newWords = newText.split(" ");
-  return newWords.map(w => oldWords.includes(w) ? w : `🟢${w}`).join(" ");
-};
-
 export default function App() {
   const [articles, setArticles] = useState([]);
   const [history, setHistory] = useState([]);
   const [usersList, setUsersList] = useState([]);
 
-  const [stats, setStats] = useState(null);
-  const [diffView, setDiffView] = useState(null);
-  const [selectedHistory, setSelectedHistory] = useState(null);
-
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
 
   const [user, setUser] = useState(null);
@@ -128,25 +105,19 @@ export default function App() {
     }
   }, [role]);
 
-  useEffect(() => {
-    if (role === "admin") {
-      setStats(getStats(articles, usersList, history));
-    }
-  }, [articles, usersList, history]);
-
   const isAdmin = role === "admin";
   const isEditor = role === "admin" || role === "editor";
 
   const publish = async () => {
     if (!isEditor) return;
 
-    let img = imageUrl;
+    let img = "";
     if (selectedImage) img = await uploadImage(selectedImage);
 
     const art = {
       title,
       content,
-      image: img || "",
+      image: img,
       category,
       date: new Date().toLocaleDateString(),
       author: user.email
@@ -155,18 +126,26 @@ export default function App() {
     const ref = await addDoc(collection(db, "articles"), art);
     setArticles([...articles, { ...art, id: ref.id }]);
 
-    setTitle(""); setContent(""); setImageUrl(""); setSelectedImage(null);
+    setTitle("");
+    setContent("");
+    setSelectedImage(null);
+  };
+
+  const startEdit = (a) => {
+    setTitle(a.title);
+    setContent(a.content);
+    setCategory(a.category);
+    setEditingId(a.id);
   };
 
   const saveEdit = async () => {
-    let img = imageUrl;
-    if (selectedImage) img = await uploadImage(selectedImage);
-
     const old = articles.find(a => a.id === editingId);
     await saveHistory("edit", old, user);
 
     await updateDoc(doc(db, "articles", editingId), {
-      title, content, image: img, category
+      title,
+      content,
+      category
     });
 
     window.location.reload();
@@ -180,16 +159,6 @@ export default function App() {
     setArticles(articles.filter(a => a.id !== id));
   };
 
-  const restoreVersion = async (h) => {
-    await updateDoc(doc(db, "articles", h.articleId), {
-      title: h.title,
-      content: h.content,
-      image: h.image,
-      category: h.category
-    });
-    window.location.reload();
-  };
-
   const changeRole = async (uid, role) => {
     await updateDoc(doc(db, "users", uid), { role });
   };
@@ -201,71 +170,79 @@ export default function App() {
     ? articles
     : articles.filter(a => a.category === filter);
 
-  // 🔽 SOLO TE PONGO EL RETURN MODIFICADO (EL RESTO NO SE TOCA)
+  return (
+    <div style={{ background:"#020617", color:"#e2e8f0", minHeight:"100vh", padding:20 }}>
 
-return (
-  <div style={{ background:"#020617", color:"#e2e8f0", minHeight:"100vh", padding:20 }}>
-    <h1 style={{ textAlign:"center", fontSize:32 }}>📜 Historia de España</h1>
+      <h1 style={{ textAlign:"center" }}>📜 Historia de España</h1>
 
-    {!user ? (
-      <button onClick={login} style={{
-        background:"#2563eb", color:"#fff", padding:"10px 20px",
-        borderRadius:8, border:"none", cursor:"pointer", display:"block", margin:"20px auto"
-      }}>
-        Acceder con Google
-      </button>
-    ) : (
-      <div style={{ textAlign:"center" }}>
-        <p>Bienvenido 👑 {user.email}</p>
-        <button onClick={logout} style={{
-          background:"#dc2626", color:"#fff", padding:"8px 16px",
-          borderRadius:8, border:"none", cursor:"pointer"
-        }}>
-          Cerrar sesión
-        </button>
-      </div>
-    )}
+      {!user ? (
+        <button onClick={login}>Acceder con Google</button>
+      ) : (
+        <div>
+          <p>👑 {user.email}</p>
+          <button onClick={logout}>Cerrar sesión</button>
+        </div>
+      )}
 
-    {/* 🔽 FILTRO CATEGORÍAS */}
-    <div style={{ marginTop:20 }}>
-      <select onChange={e => setFilter(e.target.value)}>
-        <option value="Todas">Todas</option>
-        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-      </select>
-    </div>
-
-    {/* 🔽 FORMULARIO */}
-    {isEditor && (
-      <div style={{ marginTop:20 }}>
-        <h2>✍️ Crear / Editar artículo</h2>
-
-        <input
-          placeholder="Título"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-        />
-
-        <textarea
-          placeholder="Contenido"
-          value={content}
-          onChange={e => setContent(e.target.value)}
-        />
-
-        <select onChange={e => setCategory(e.target.value)} value={category}>
+      <div>
+        <select onChange={e => setFilter(e.target.value)}>
+          <option value="Todas">Todas</option>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
         </select>
-
-        <input type="file" onChange={e => setSelectedImage(e.target.files[0])} />
-
-        {!editingId ? (
-          <button onClick={publish}>Publicar</button>
-        ) : (
-          <button onClick={saveEdit}>Guardar cambios</button>
-        )}
       </div>
-    )}
 
-    {/* 🔽 DASHBOARD */}
-    {isAdmin && stats && (
-      <div style={{ marginTop:20 }}>
-        <h2>📊 Dashboard</h2
+      {isEditor && (
+        <div>
+          <h2>✍️ Crear / Editar</h2>
+
+          <input value={title} onChange={e => setTitle(e.target.value)} />
+          <textarea value={content} onChange={e => setContent(e.target.value)} />
+
+          <select value={category} onChange={e => setCategory(e.target.value)}>
+            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          </select>
+
+          <input type="file" onChange={e => setSelectedImage(e.target.files[0])} />
+
+          {!editingId
+            ? <button onClick={publish}>Publicar</button>
+            : <button onClick={saveEdit}>Guardar</button>
+          }
+        </div>
+      )}
+
+      <div>
+        {filtered.map(a => (
+          <div key={a.id}>
+            <h3>{a.title}</h3>
+            <p>{a.content}</p>
+
+            {isEditor && (
+              <>
+                <button onClick={() => startEdit(a)}>Editar</button>
+                <button onClick={() => remove(a.id)}>Eliminar</button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {isAdmin && (
+        <div>
+          <h2>Usuarios</h2>
+          {usersList.map(u => (
+            <div key={u.id}>
+              {u.email}
+              <select onChange={e => changeRole(u.id, e.target.value)}>
+                <option>user</option>
+                <option>editor</option>
+                <option>admin</option>
+              </select>
+            </div>
+          ))}
+        </div>
+      )}
+
+    </div>
+  );
+}
