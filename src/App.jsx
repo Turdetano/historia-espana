@@ -1,10 +1,3 @@
-const CATEGORIES = [
-  "Edad Antigua",
-  "Edad Media",
-  "Reconquista",
-  "Imperio Español",
-  "Edad Contemporánea"
-];
 import { db, auth } from "./firebase.js";
 import {
   collection,
@@ -35,13 +28,12 @@ const CATEGORIES = [
 
 export default function App() {
   const [articles, setArticles] = useState([]);
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
+
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
-
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
-  const [editingId, setEditingId] = useState(null);
 
   const [filter, setFilter] = useState("Todas");
 
@@ -51,8 +43,6 @@ export default function App() {
       if (u) {
         const snap = await getDoc(doc(db, "users", u.uid));
         setRole(snap.exists() ? snap.data().role : "user");
-      } else {
-        setRole(null);
       }
     });
   }, []);
@@ -63,9 +53,9 @@ export default function App() {
     );
   }, []);
 
-  const isAdmin = role === "admin";
   const isEditor = role === "admin" || role === "editor";
-   const publish = async () => {
+
+  const publish = async () => {
     if (!isEditor) return;
 
     const art = {
@@ -73,7 +63,7 @@ export default function App() {
       content,
       category,
       date: new Date().toLocaleDateString(),
-      author: user?.email || "anon"
+      author: user.email
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
@@ -81,23 +71,6 @@ export default function App() {
 
     setTitle("");
     setContent("");
-    setEditingId(null);
-  };
-
-  const startEdit = (a) => {
-    setTitle(a.title);
-    setContent(a.content);
-    setCategory(a.category);
-    setEditingId(a.id);
-  };
-
-  const saveEdit = async () => {
-    await updateDoc(doc(db, "articles", editingId), {
-      title,
-      content,
-      category
-    });
-    window.location.reload();
   };
 
   const remove = async (id) => {
@@ -108,51 +81,74 @@ export default function App() {
   const login = () => signInWithPopup(auth, provider);
   const logout = () => signOut(auth);
 
-  const filtered = filter === "Todas"
-    ? articles
-    : articles.filter(a => a.category === filter);
+  const filtered =
+    filter === "Todas"
+      ? articles
+      : articles.filter(a => a.category === filter);
 
   return (
-    <div style={{ padding:20 }}>
-      <h1>Historia de España</h1>
+    <div style={{ background:"#020617", color:"#e2e8f0", minHeight:"100vh", padding:20 }}>
+      <h1 style={{ textAlign:"center" }}>📜 Historia de España</h1>
 
       {!user ? (
-        <button onClick={login}>Acceder</button>
+        <button onClick={login}>Acceder con Google</button>
       ) : (
-        <>
+        <div>
           <p>{user.email}</p>
-          <button onClick={logout}>Salir</button>
-        </>
+          <button onClick={logout}>Cerrar sesión</button>
+        </div>
       )}
 
-      <select onChange={e => setFilter(e.target.value)}>
-        <option value="Todas">Todas</option>
-        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-      </select>
+      <div style={{ marginTop:20 }}>
+        <select onChange={e => setFilter(e.target.value)}>
+          <option value="Todas">Todas</option>
+          {CATEGORIES.map(c => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
+      </div>
 
       {isEditor && (
-        <div>
-          <input value={title} onChange={e => setTitle(e.target.value)} />
-          <textarea value={content} onChange={e => setContent(e.target.value)} />
-          <button onClick={!editingId ? publish : saveEdit}>
-            {!editingId ? "Publicar" : "Guardar"}
-          </button>
+        <div style={{ marginTop:20 }}>
+          <h2>Crear artículo</h2>
+
+          <input
+            placeholder="Título"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+          />
+
+          <textarea
+            placeholder="Contenido"
+            value={content}
+            onChange={e => setContent(e.target.value)}
+          />
+
+          <select
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+          >
+            {CATEGORIES.map(c => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+
+          <button onClick={publish}>Publicar</button>
         </div>
       )}
 
-      {filtered.map(a => (
-        <div key={a.id}>
-          <h3>{a.title}</h3>
-          <p>{a.content}</p>
+      <div style={{ marginTop:20 }}>
+        {filtered.map(a => (
+          <div key={a.id} style={{ marginBottom:10 }}>
+            <h3>{a.title}</h3>
+            <p>{a.content}</p>
 
-          {isEditor && (
-            <>
-              <button onClick={() => startEdit(a)}>Editar</button>
+            {isEditor && (
               <button onClick={() => remove(a.id)}>Eliminar</button>
-            </>
-          )}
-        </div>
-      ))}
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
