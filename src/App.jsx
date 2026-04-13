@@ -33,12 +33,12 @@ const uploadImage = async (file) => {
     formData.append("upload_preset", "historia_unsigned");
 
     const res = await fetch(
-      "https://api.cloudinary.com/v1_1/dlv8e9o3/image/upload",
-      {
-        method: "POST",
-        body: formData
-      }
-    );
+  "https://api.cloudinary.com/v1_1/djlv6e9o3/image/upload",
+  {
+    method: "POST",
+    body: formData
+  }
+);
 
     const data = await res.json();
 
