@@ -26,11 +26,31 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
+// 🔥 CLOUDINARY (YA CONFIGURADO)
+const uploadImage = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", "historia_unsigned");
+
+  try {
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/dlv8e9o3/image/upload",
+      { method: "POST", body: formData }
+    );
+    const data = await res.json();
+    return data.secure_url;
+  } catch {
+    return "";
+  }
+};
+
 export default function App() {
   const [articles, setArticles] = useState([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
+
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
@@ -60,10 +80,16 @@ export default function App() {
   const publish = async () => {
     if (!isEditor) return;
 
+    let imageUrl = "";
+    if (selectedImage) {
+      imageUrl = await uploadImage(selectedImage);
+    }
+
     const art = {
       title,
       content,
       category,
+      image: imageUrl,
       date: new Date().toLocaleDateString(),
       author: user.email
     };
@@ -73,6 +99,7 @@ export default function App() {
 
     setTitle("");
     setContent("");
+    setSelectedImage(null);
   };
 
   const startEdit = (article) => {
@@ -83,10 +110,17 @@ export default function App() {
   };
 
   const saveEdit = async () => {
+    let imageUrl = "";
+
+    if (selectedImage) {
+      imageUrl = await uploadImage(selectedImage);
+    }
+
     await updateDoc(doc(db, "articles", editingId), {
       title,
       content,
-      category
+      category,
+      ...(imageUrl && { image: imageUrl })
     });
 
     window.location.reload();
@@ -172,6 +206,14 @@ export default function App() {
 
           <br /><br />
 
+          {/* 📸 SUBIR IMAGEN */}
+          <input
+            type="file"
+            onChange={e => setSelectedImage(e.target.files[0])}
+          />
+
+          <br /><br />
+
           {!editingId ? (
             <button onClick={publish} style={{
               background: "#16a34a",
@@ -210,6 +252,22 @@ export default function App() {
             background: "#ffffff"
           }}>
             <h3>{a.title}</h3>
+
+            {/* 📸 MOSTRAR IMAGEN */}
+            {a.image && (
+              <img
+                src={a.image}
+                alt=""
+                style={{
+                  width: "100%",
+                  maxHeight: 250,
+                  objectFit: "cover",
+                  borderRadius: 8,
+                  marginBottom: 10
+                }}
+              />
+            )}
+
             <p>{a.content}</p>
             <small>{a.category} | {a.date}</small>
 
