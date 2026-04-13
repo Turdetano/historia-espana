@@ -26,7 +26,7 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 🔥 CLOUDINARY (YA CONFIGURADO)
+// 📸 SUBIDA CLOUDINARY
 const uploadImage = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -79,6 +79,11 @@ export default function App() {
 
   const publish = async () => {
     if (!isEditor) return;
+
+    if (!title || !content) {
+      alert("❌ Rellena título y contenido");
+      return;
+    }
 
     let imageUrl = "";
     if (selectedImage) {
@@ -156,7 +161,8 @@ export default function App() {
           border: "none",
           cursor: "pointer",
           display: "block",
-          margin: "20px auto"
+          margin: "20px auto",
+          fontWeight: "bold"
         }}>
           Iniciar sesión con Google
         </button>
@@ -185,19 +191,31 @@ export default function App() {
             placeholder="Título"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            style={{ display: "block", marginBottom: 10, width: "100%" }}
+            style={{
+              display: "block",
+              marginBottom: 10,
+              width: "100%",
+              padding: 8
+            }}
           />
 
           <textarea
             placeholder="Contenido"
             value={content}
             onChange={e => setContent(e.target.value)}
-            style={{ display: "block", marginBottom: 10, width: "100%" }}
+            style={{
+              display: "block",
+              marginBottom: 10,
+              width: "100%",
+              padding: 8,
+              minHeight: 100
+            }}
           />
 
           <select
             value={category}
             onChange={e => setCategory(e.target.value)}
+            style={{ padding: 6 }}
           >
             {CATEGORIES.map(c => (
               <option key={c}>{c}</option>
@@ -206,11 +224,22 @@ export default function App() {
 
           <br /><br />
 
-          {/* 📸 SUBIR IMAGEN */}
-          <input
-            type="file"
-            onChange={e => setSelectedImage(e.target.files[0])}
-          />
+          {/* 📸 BOTÓN FILE MEJORADO */}
+          <label style={{
+            background: "#475569",
+            color: "#fff",
+            padding: "8px 12px",
+            borderRadius: 6,
+            cursor: "pointer",
+            display: "inline-block"
+          }}>
+            📸 Seleccionar imagen
+            <input
+              type="file"
+              onChange={e => setSelectedImage(e.target.files[0])}
+              style={{ display: "none" }}
+            />
+          </label>
 
           <br /><br />
 
@@ -218,18 +247,19 @@ export default function App() {
             <button onClick={publish} style={{
               background: "#16a34a",
               color: "#fff",
-              padding: "10px 20px",
+              padding: "12px 20px",
               borderRadius: 8,
               border: "none",
-              cursor: "pointer"
+              cursor: "pointer",
+              fontWeight: "bold"
             }}>
-              Publicar
+              🚀 Publicar artículo
             </button>
           ) : (
             <button onClick={saveEdit} style={{
               background: "#f59e0b",
               color: "#fff",
-              padding: "10px 20px",
+              padding: "12px 20px",
               borderRadius: 8,
               border: "none",
               cursor: "pointer"
@@ -253,7 +283,6 @@ export default function App() {
           }}>
             <h3>{a.title}</h3>
 
-            {/* 📸 MOSTRAR IMAGEN */}
             {a.image && (
               <img
                 src={a.image}
