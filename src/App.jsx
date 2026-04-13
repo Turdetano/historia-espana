@@ -26,7 +26,7 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 📸 CLOUDINARY (ROBUSTO)
+// CLOUDINARY
 const uploadImage = async (file) => {
   try {
     const formData = new FormData();
@@ -35,22 +35,16 @@ const uploadImage = async (file) => {
 
     const res = await fetch(
       "https://api.cloudinary.com/v1_1/dlv8e9o3/image/upload",
-      {
-        method: "POST",
-        body: formData
-      }
+      { method: "POST", body: formData }
     );
 
     const data = await res.json();
 
-    if (!data.secure_url) {
-      throw new Error("Error subiendo imagen");
-    }
+    if (!data.secure_url) throw new Error();
 
     return data.secure_url;
-  } catch (err) {
+  } catch {
     alert("❌ Error al subir imagen");
-    console.error(err);
     return null;
   }
 };
@@ -61,6 +55,8 @@ export default function App() {
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [selectedImage, setSelectedImage] = useState(null);
+
+  const [loading, setLoading] = useState(false); // 🔥 NUEVO
 
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
@@ -87,28 +83,31 @@ export default function App() {
 
   const isEditor = role === "admin" || role === "editor";
 
-  // 🚀 PUBLICAR (ARREGLADO)
   const publish = async () => {
-    if (!isEditor) return;
+    if (!isEditor || loading) return;
 
     if (!title || !content) {
       alert("❌ Rellena título y contenido");
       return;
     }
 
+    setLoading(true);
+
     let imageUrl = "";
 
     if (selectedImage) {
       imageUrl = await uploadImage(selectedImage);
-
-      if (imageUrl === null) return; // ❗ evita publicar si falla imagen
+      if (imageUrl === null) {
+        setLoading(false);
+        return;
+      }
     }
 
     const art = {
       title,
       content,
       category,
-      image: imageUrl || "",
+      image: imageUrl,
       date: new Date().toLocaleDateString(),
       author: user.email
     };
@@ -117,36 +116,12 @@ export default function App() {
 
     setArticles([...articles, { ...art, id: ref.id }]);
 
-    // reset limpio
     setTitle("");
     setContent("");
     setSelectedImage(null);
+    setLoading(false);
 
-    alert("✅ Artículo publicado correctamente");
-  };
-
-  const startEdit = (article) => {
-    setTitle(article.title);
-    setContent(article.content);
-    setCategory(article.category);
-    setEditingId(article.id);
-  };
-
-  const saveEdit = async () => {
-    let imageUrl = "";
-
-    if (selectedImage) {
-      imageUrl = await uploadImage(selectedImage);
-    }
-
-    await updateDoc(doc(db, "articles", editingId), {
-      title,
-      content,
-      category,
-      ...(imageUrl && { image: imageUrl })
-    });
-
-    window.location.reload();
+    alert("✅ Artículo publicado");
   };
 
   const remove = async (id) => {
@@ -179,31 +154,20 @@ export default function App() {
           border: "none",
           cursor: "pointer",
           display: "block",
-          margin: "20px auto",
-          fontWeight: "bold"
+          margin: "20px auto"
         }}>
-          Iniciar sesión con Google
+          Iniciar sesión
         </button>
       ) : (
         <div style={{ textAlign: "center" }}>
           <p>👤 {user.email}</p>
-
-          <button onClick={logout} style={{
-            background: "#dc2626",
-            color: "#fff",
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "none",
-            cursor: "pointer"
-          }}>
-            Cerrar sesión
-          </button>
+          <button onClick={logout}>Cerrar sesión</button>
         </div>
       )}
 
       {isEditor && (
         <div style={{ marginTop: 30 }}>
-          <h2>✍️ {editingId ? "Editar artículo" : "Crear artículo"}</h2>
+          <h2>✍️ Crear artículo</h2>
 
           <input
             placeholder="Título"
@@ -216,13 +180,12 @@ export default function App() {
             placeholder="Contenido"
             value={content}
             onChange={e => setContent(e.target.value)}
-            style={{ width: "100%", padding: 10, minHeight: 120, marginBottom: 10 }}
+            style={{ width: "100%", padding: 10, marginBottom: 10 }}
           />
 
           <select
             value={category}
             onChange={e => setCategory(e.target.value)}
-            style={{ padding: 8 }}
           >
             {CATEGORIES.map(c => (
               <option key={c}>{c}</option>
@@ -231,50 +194,27 @@ export default function App() {
 
           <br /><br />
 
-          {/* BOTÓN IMAGEN ARREGLADO */}
-          <label style={{
-            background: "#334155",
-            color: "#fff",
-            padding: "10px 15px",
-            borderRadius: 6,
-            cursor: "pointer",
-            fontWeight: "bold"
-          }}>
-            📸 Seleccionar imagen
-            <input
-              type="file"
-              onChange={e => setSelectedImage(e.target.files[0])}
-              style={{ display: "none" }}
-            />
-          </label>
+          <input
+            type="file"
+            onChange={e => setSelectedImage(e.target.files[0])}
+          />
 
           <br /><br />
 
-          {!editingId ? (
-            <button onClick={publish} style={{
-              background: "#16a34a",
+          <button
+            onClick={publish}
+            disabled={loading}
+            style={{
+              background: loading ? "#94a3b8" : "#16a34a",
               color: "#fff",
-              padding: "14px 22px",
+              padding: "12px 20px",
               borderRadius: 8,
               border: "none",
-              cursor: "pointer",
-              fontWeight: "bold",
-              fontSize: 16
-            }}>
-              🚀 Publicar artículo
-            </button>
-          ) : (
-            <button onClick={saveEdit} style={{
-              background: "#f59e0b",
-              color: "#fff",
-              padding: "14px 22px",
-              borderRadius: 8,
-              border: "none",
-              cursor: "pointer"
-            }}>
-              Guardar cambios
-            </button>
-          )}
+              cursor: loading ? "not-allowed" : "pointer"
+            }}
+          >
+            {loading ? "⏳ Subiendo..." : "🚀 Publicar"}
+          </button>
         </div>
       )}
 
@@ -283,59 +223,27 @@ export default function App() {
 
         {articles.map(a => (
           <div key={a.id} style={{
-            border: "1px solid #cbd5e1",
-            padding: 15,
-            marginBottom: 15,
-            borderRadius: 10,
-            background: "#ffffff"
+            border: "1px solid #ccc",
+            padding: 10,
+            marginBottom: 10,
+            background: "#fff"
           }}>
             <h3>{a.title}</h3>
 
             {a.image && (
-              <img
-                src={a.image}
-                alt=""
-                style={{
-                  width: "100%",
-                  maxHeight: 250,
-                  objectFit: "cover",
-                  borderRadius: 8,
-                  marginBottom: 10
-                }}
-              />
+              <img src={a.image} style={{ width: "100%" }} />
             )}
 
             <p>{a.content}</p>
-            <small>{a.category} | {a.date}</small>
 
             {isEditor && (
-              <div style={{ marginTop: 10 }}>
-                <button onClick={() => startEdit(a)} style={{
-                  background: "#2563eb",
-                  color: "#fff",
-                  padding: "6px 12px",
-                  borderRadius: 6,
-                  border: "none",
-                  marginRight: 10
-                }}>
-                  ✏️ Editar
-                </button>
-
-                <button onClick={() => remove(a.id)} style={{
-                  background: "#dc2626",
-                  color: "#fff",
-                  padding: "6px 12px",
-                  borderRadius: 6,
-                  border: "none"
-                }}>
-                  ❌ Eliminar
-                </button>
-              </div>
+              <button onClick={() => remove(a.id)}>
+                ❌ Eliminar
+              </button>
             )}
           </div>
         ))}
       </div>
-
     </div>
   );
 }
