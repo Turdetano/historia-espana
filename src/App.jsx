@@ -26,32 +26,14 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 🔥 SUBIR IMAGEN
-const uploadImage = async (file) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", "historia_unsigned");
-
-  const res = await fetch(
-    "https://api.cloudinary.com/v1_1/dlv8e9o3/image/upload",
-    { method: "POST", body: formData }
-  );
-
-  const data = await res.json();
-  return data.secure_url;
-};
-
 export default function App() {
   const [articles, setArticles] = useState([]);
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
-
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
-  const [image, setImage] = useState(null);
 
-  const [editingId, setEditingId] = useState(null);
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
 
   useEffect(() => {
     onAuthStateChanged(auth, async (u) => {
@@ -77,14 +59,10 @@ export default function App() {
   const publish = async () => {
     if (!isEditor) return;
 
-    let imageUrl = "";
-    if (image) imageUrl = await uploadImage(image);
-
     const art = {
       title,
       content,
       category,
-      image: imageUrl,
       date: new Date().toLocaleDateString(),
       author: user.email
     };
@@ -94,45 +72,6 @@ export default function App() {
 
     setTitle("");
     setContent("");
-    setImage(null);
-  };
-
-  const startEdit = (article) => {
-    setEditingId(article.id);
-    setTitle(article.title);
-    setContent(article.content);
-    setCategory(article.category);
-  };
-
-  const saveEdit = async () => {
-    if (!editingId) return;
-
-    let imageUrl = null;
-    if (image) imageUrl = await uploadImage(image);
-
-    const updateData = {
-      title,
-      content,
-      category
-    };
-
-    if (imageUrl) updateData.image = imageUrl;
-
-    await updateDoc(doc(db, "articles", editingId), updateData);
-
-    setEditingId(null);
-    setTitle("");
-    setContent("");
-    setImage(null);
-
-    window.location.reload();
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setTitle("");
-    setContent("");
-    setImage(null);
   };
 
   const remove = async (id) => {
@@ -144,82 +83,116 @@ export default function App() {
   const logout = () => signOut(auth);
 
   return (
-    <div style={{ background:"#f8fafc", color:"#1e293b", minHeight:"100vh", padding:20 }}>
-      <h1 style={{ textAlign:"center" }}>📜 Historia de España</h1>
+    <div style={{
+      background: "#f8fafc",
+      color: "#1e293b",
+      minHeight: "100vh",
+      padding: 20,
+      fontFamily: "Arial"
+    }}>
+      
+      <h1 style={{ textAlign: "center" }}>
+        📜 Historia de España
+      </h1>
 
       {!user ? (
-        <button onClick={login}>Acceder con Google</button>
+        <button onClick={login} style={{
+          background: "#2563eb",
+          color: "#fff",
+          padding: "10px 20px",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          display: "block",
+          margin: "20px auto"
+        }}>
+          Iniciar sesión con Google
+        </button>
       ) : (
-        <div style={{ textAlign:"center" }}>
-          <p>{user.email}</p>
-          <button onClick={logout}>Cerrar sesión</button>
+        <div style={{ textAlign: "center" }}>
+          <p>👤 {user.email}</p>
+
+          <button onClick={logout} style={{
+            background: "#dc2626",
+            color: "#fff",
+            padding: "8px 16px",
+            borderRadius: 8,
+            border: "none",
+            cursor: "pointer"
+          }}>
+            Cerrar sesión
+          </button>
         </div>
       )}
 
       {isEditor && (
-        <div style={{ marginTop:20, background:"#fff", padding:20, borderRadius:10 }}>
-          <h2>{editingId ? "Editar artículo" : "Crear artículo"}</h2>
+        <div style={{ marginTop: 30 }}>
+          <h2>✍️ Crear artículo</h2>
 
           <input
             placeholder="Título"
             value={title}
             onChange={e => setTitle(e.target.value)}
+            style={{ display: "block", marginBottom: 10, width: "100%" }}
           />
 
           <textarea
             placeholder="Contenido"
             value={content}
             onChange={e => setContent(e.target.value)}
+            style={{ display: "block", marginBottom: 10, width: "100%" }}
           />
 
-          <select value={category} onChange={e => setCategory(e.target.value)}>
+          <select
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+          >
             {CATEGORIES.map(c => (
               <option key={c}>{c}</option>
             ))}
           </select>
 
-          <input type="file" onChange={e => setImage(e.target.files[0])} />
+          <br /><br />
 
-          {!editingId ? (
-            <button onClick={publish}>Publicar</button>
-          ) : (
-            <>
-              <button onClick={saveEdit}>Guardar</button>
-              <button onClick={cancelEdit}>Cancelar</button>
-            </>
-          )}
+          <button onClick={publish} style={{
+            background: "#16a34a",
+            color: "#fff",
+            padding: "10px 20px",
+            borderRadius: 8,
+            border: "none",
+            cursor: "pointer"
+          }}>
+            Publicar
+          </button>
         </div>
       )}
 
-      <div style={{ marginTop:30 }}>
+      <div style={{ marginTop: 40 }}>
+        <h2>📚 Artículos</h2>
+
         {articles.map(a => (
           <div key={a.id} style={{
-            background:"#fff",
-            padding:15,
-            borderRadius:10,
-            marginBottom:15
+            border: "1px solid #ccc",
+            padding: 10,
+            marginBottom: 10,
+            borderRadius: 8,
+            background: "#fff"
           }}>
             <h3>{a.title}</h3>
-
-            {a.image && (
-              <img
-                src={a.image}
-                alt=""
-                style={{ width:"100%", maxHeight:300, objectFit:"cover" }}
-              />
-            )}
-
             <p>{a.content}</p>
-            <small>{a.category}</small>
+            <small>{a.category} | {a.date}</small>
 
             {isEditor && (
-              <>
-                <button onClick={() => startEdit(a)}>Editar</button>
-                <button onClick={() => remove(a.id)}>Eliminar</button>
-              </>
+              <div>
+                <button onClick={() => remove(a.id)}>
+                  ❌ Eliminar
+                </button>
+              </div>
             )}
           </div>
         ))}
       </div>
+
     </div>
- 
+  );
+}
