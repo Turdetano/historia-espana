@@ -34,6 +34,7 @@ export default function App() {
 
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     onAuthStateChanged(auth, async (u) => {
@@ -74,6 +75,23 @@ export default function App() {
     setContent("");
   };
 
+  const startEdit = (article) => {
+    setTitle(article.title);
+    setContent(article.content);
+    setCategory(article.category);
+    setEditingId(article.id);
+  };
+
+  const saveEdit = async () => {
+    await updateDoc(doc(db, "articles", editingId), {
+      title,
+      content,
+      category
+    });
+
+    window.location.reload();
+  };
+
   const remove = async (id) => {
     await deleteDoc(doc(db, "articles", id));
     setArticles(articles.filter(a => a.id !== id));
@@ -84,8 +102,8 @@ export default function App() {
 
   return (
     <div style={{
-      background: "#f8fafc",
-      color: "#1e293b",
+      background: "#f1f5f9",
+      color: "#0f172a",
       minHeight: "100vh",
       padding: 20,
       fontFamily: "Arial"
@@ -127,7 +145,7 @@ export default function App() {
 
       {isEditor && (
         <div style={{ marginTop: 30 }}>
-          <h2>✍️ Crear artículo</h2>
+          <h2>✍️ {editingId ? "Editar artículo" : "Crear artículo"}</h2>
 
           <input
             placeholder="Título"
@@ -154,16 +172,29 @@ export default function App() {
 
           <br /><br />
 
-          <button onClick={publish} style={{
-            background: "#16a34a",
-            color: "#fff",
-            padding: "10px 20px",
-            borderRadius: 8,
-            border: "none",
-            cursor: "pointer"
-          }}>
-            Publicar
-          </button>
+          {!editingId ? (
+            <button onClick={publish} style={{
+              background: "#16a34a",
+              color: "#fff",
+              padding: "10px 20px",
+              borderRadius: 8,
+              border: "none",
+              cursor: "pointer"
+            }}>
+              Publicar
+            </button>
+          ) : (
+            <button onClick={saveEdit} style={{
+              background: "#f59e0b",
+              color: "#fff",
+              padding: "10px 20px",
+              borderRadius: 8,
+              border: "none",
+              cursor: "pointer"
+            }}>
+              Guardar cambios
+            </button>
+          )}
         </div>
       )}
 
@@ -172,19 +203,44 @@ export default function App() {
 
         {articles.map(a => (
           <div key={a.id} style={{
-            border: "1px solid #ccc",
-            padding: 10,
-            marginBottom: 10,
-            borderRadius: 8,
-            background: "#fff"
+            border: "1px solid #cbd5e1",
+            padding: 15,
+            marginBottom: 15,
+            borderRadius: 10,
+            background: "#ffffff"
           }}>
             <h3>{a.title}</h3>
             <p>{a.content}</p>
             <small>{a.category} | {a.date}</small>
 
             {isEditor && (
-              <div>
-                <button onClick={() => remove(a.id)}>
+              <div style={{ marginTop: 10 }}>
+                <button
+                  onClick={() => startEdit(a)}
+                  style={{
+                    background: "#2563eb",
+                    color: "#fff",
+                    padding: "6px 12px",
+                    borderRadius: 6,
+                    border: "none",
+                    cursor: "pointer",
+                    marginRight: 10
+                  }}
+                >
+                  ✏️ Editar
+                </button>
+
+                <button
+                  onClick={() => remove(a.id)}
+                  style={{
+                    background: "#dc2626",
+                    color: "#fff",
+                    padding: "6px 12px",
+                    borderRadius: 6,
+                    border: "none",
+                    cursor: "pointer"
+                  }}
+                >
                   ❌ Eliminar
                 </button>
               </div>
