@@ -5,7 +5,6 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  updateDoc,
   getDoc
 } from "firebase/firestore";
 import {
@@ -26,7 +25,7 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// CLOUDINARY
+// 📸 SUBIR IMAGEN (ROBUSTO)
 const uploadImage = async (file) => {
   try {
     const formData = new FormData();
@@ -35,7 +34,10 @@ const uploadImage = async (file) => {
 
     const res = await fetch(
       "https://api.cloudinary.com/v1_1/dlv8e9o3/image/upload",
-      { method: "POST", body: formData }
+      {
+        method: "POST",
+        body: formData
+      }
     );
 
     const data = await res.json();
@@ -56,11 +58,10 @@ export default function App() {
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [selectedImage, setSelectedImage] = useState(null);
 
-  const [loading, setLoading] = useState(false); // 🔥 NUEVO
+  const [loading, setLoading] = useState(false);
 
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
-  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     onAuthStateChanged(auth, async (u) => {
@@ -83,6 +84,7 @@ export default function App() {
 
   const isEditor = role === "admin" || role === "editor";
 
+  // 🚀 PUBLICAR
   const publish = async () => {
     if (!isEditor || loading) return;
 
@@ -97,6 +99,7 @@ export default function App() {
 
     if (selectedImage) {
       imageUrl = await uploadImage(selectedImage);
+
       if (imageUrl === null) {
         setLoading(false);
         return;
@@ -154,14 +157,25 @@ export default function App() {
           border: "none",
           cursor: "pointer",
           display: "block",
-          margin: "20px auto"
+          margin: "20px auto",
+          fontWeight: "bold"
         }}>
           Iniciar sesión
         </button>
       ) : (
         <div style={{ textAlign: "center" }}>
           <p>👤 {user.email}</p>
-          <button onClick={logout}>Cerrar sesión</button>
+
+          <button onClick={logout} style={{
+            background: "#dc2626",
+            color: "#fff",
+            padding: "8px 16px",
+            borderRadius: 8,
+            border: "none",
+            cursor: "pointer"
+          }}>
+            Cerrar sesión
+          </button>
         </div>
       )}
 
@@ -186,6 +200,7 @@ export default function App() {
           <select
             value={category}
             onChange={e => setCategory(e.target.value)}
+            style={{ padding: 8 }}
           >
             {CATEGORIES.map(c => (
               <option key={c}>{c}</option>
@@ -194,10 +209,22 @@ export default function App() {
 
           <br /><br />
 
-          <input
-            type="file"
-            onChange={e => setSelectedImage(e.target.files[0])}
-          />
+          {/* BOTÓN BONITO PARA IMAGEN */}
+          <label style={{
+            background: "#334155",
+            color: "#fff",
+            padding: "10px 15px",
+            borderRadius: 6,
+            cursor: "pointer",
+            fontWeight: "bold"
+          }}>
+            📸 Seleccionar imagen
+            <input
+              type="file"
+              onChange={e => setSelectedImage(e.target.files[0])}
+              style={{ display: "none" }}
+            />
+          </label>
 
           <br /><br />
 
@@ -210,10 +237,11 @@ export default function App() {
               padding: "12px 20px",
               borderRadius: 8,
               border: "none",
-              cursor: loading ? "not-allowed" : "pointer"
+              cursor: loading ? "not-allowed" : "pointer",
+              fontWeight: "bold"
             }}
           >
-            {loading ? "⏳ Subiendo..." : "🚀 Publicar"}
+            {loading ? "⏳ Subiendo..." : "🚀 Publicar artículo"}
           </button>
         </div>
       )}
@@ -237,7 +265,14 @@ export default function App() {
             <p>{a.content}</p>
 
             {isEditor && (
-              <button onClick={() => remove(a.id)}>
+              <button onClick={() => remove(a.id)} style={{
+                background: "#dc2626",
+                color: "#fff",
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: "none",
+                marginTop: 10
+              }}>
                 ❌ Eliminar
               </button>
             )}
