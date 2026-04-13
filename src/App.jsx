@@ -26,21 +26,32 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 📸 SUBIDA CLOUDINARY
+// 📸 CLOUDINARY (ROBUSTO)
 const uploadImage = async (file) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", "historia_unsigned");
-
   try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "historia_unsigned");
+
     const res = await fetch(
       "https://api.cloudinary.com/v1_1/dlv8e9o3/image/upload",
-      { method: "POST", body: formData }
+      {
+        method: "POST",
+        body: formData
+      }
     );
+
     const data = await res.json();
+
+    if (!data.secure_url) {
+      throw new Error("Error subiendo imagen");
+    }
+
     return data.secure_url;
-  } catch {
-    return "";
+  } catch (err) {
+    alert("❌ Error al subir imagen");
+    console.error(err);
+    return null;
   }
 };
 
@@ -49,7 +60,6 @@ export default function App() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
-
   const [selectedImage, setSelectedImage] = useState(null);
 
   const [user, setUser] = useState(null);
@@ -77,6 +87,7 @@ export default function App() {
 
   const isEditor = role === "admin" || role === "editor";
 
+  // 🚀 PUBLICAR (ARREGLADO)
   const publish = async () => {
     if (!isEditor) return;
 
@@ -86,25 +97,32 @@ export default function App() {
     }
 
     let imageUrl = "";
+
     if (selectedImage) {
       imageUrl = await uploadImage(selectedImage);
+
+      if (imageUrl === null) return; // ❗ evita publicar si falla imagen
     }
 
     const art = {
       title,
       content,
       category,
-      image: imageUrl,
+      image: imageUrl || "",
       date: new Date().toLocaleDateString(),
       author: user.email
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
+
     setArticles([...articles, { ...art, id: ref.id }]);
 
+    // reset limpio
     setTitle("");
     setContent("");
     setSelectedImage(null);
+
+    alert("✅ Artículo publicado correctamente");
   };
 
   const startEdit = (article) => {
@@ -191,31 +209,20 @@ export default function App() {
             placeholder="Título"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            style={{
-              display: "block",
-              marginBottom: 10,
-              width: "100%",
-              padding: 8
-            }}
+            style={{ width: "100%", padding: 10, marginBottom: 10 }}
           />
 
           <textarea
             placeholder="Contenido"
             value={content}
             onChange={e => setContent(e.target.value)}
-            style={{
-              display: "block",
-              marginBottom: 10,
-              width: "100%",
-              padding: 8,
-              minHeight: 100
-            }}
+            style={{ width: "100%", padding: 10, minHeight: 120, marginBottom: 10 }}
           />
 
           <select
             value={category}
             onChange={e => setCategory(e.target.value)}
-            style={{ padding: 6 }}
+            style={{ padding: 8 }}
           >
             {CATEGORIES.map(c => (
               <option key={c}>{c}</option>
@@ -224,14 +231,14 @@ export default function App() {
 
           <br /><br />
 
-          {/* 📸 BOTÓN FILE MEJORADO */}
+          {/* BOTÓN IMAGEN ARREGLADO */}
           <label style={{
-            background: "#475569",
+            background: "#334155",
             color: "#fff",
-            padding: "8px 12px",
+            padding: "10px 15px",
             borderRadius: 6,
             cursor: "pointer",
-            display: "inline-block"
+            fontWeight: "bold"
           }}>
             📸 Seleccionar imagen
             <input
@@ -247,11 +254,12 @@ export default function App() {
             <button onClick={publish} style={{
               background: "#16a34a",
               color: "#fff",
-              padding: "12px 20px",
+              padding: "14px 22px",
               borderRadius: 8,
               border: "none",
               cursor: "pointer",
-              fontWeight: "bold"
+              fontWeight: "bold",
+              fontSize: 16
             }}>
               🚀 Publicar artículo
             </button>
@@ -259,7 +267,7 @@ export default function App() {
             <button onClick={saveEdit} style={{
               background: "#f59e0b",
               color: "#fff",
-              padding: "12px 20px",
+              padding: "14px 22px",
               borderRadius: 8,
               border: "none",
               cursor: "pointer"
@@ -302,32 +310,24 @@ export default function App() {
 
             {isEditor && (
               <div style={{ marginTop: 10 }}>
-                <button
-                  onClick={() => startEdit(a)}
-                  style={{
-                    background: "#2563eb",
-                    color: "#fff",
-                    padding: "6px 12px",
-                    borderRadius: 6,
-                    border: "none",
-                    cursor: "pointer",
-                    marginRight: 10
-                  }}
-                >
+                <button onClick={() => startEdit(a)} style={{
+                  background: "#2563eb",
+                  color: "#fff",
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: "none",
+                  marginRight: 10
+                }}>
                   ✏️ Editar
                 </button>
 
-                <button
-                  onClick={() => remove(a.id)}
-                  style={{
-                    background: "#dc2626",
-                    color: "#fff",
-                    padding: "6px 12px",
-                    borderRadius: 6,
-                    border: "none",
-                    cursor: "pointer"
-                  }}
-                >
+                <button onClick={() => remove(a.id)} style={{
+                  background: "#dc2626",
+                  color: "#fff",
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: "none"
+                }}>
                   ❌ Eliminar
                 </button>
               </div>
