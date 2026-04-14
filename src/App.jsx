@@ -25,6 +25,38 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
+// 🎨 ESTILOS BOTONES
+const btnPrimary = {
+  background: "#2563eb",
+  color: "#fff",
+  padding: "10px 16px",
+  borderRadius: 8,
+  border: "none",
+  cursor: "pointer",
+  marginRight: 10,
+  fontWeight: "bold"
+};
+
+const btnDanger = {
+  background: "#dc2626",
+  color: "#fff",
+  padding: "10px 16px",
+  borderRadius: 8,
+  border: "none",
+  cursor: "pointer",
+  fontWeight: "bold"
+};
+
+const btnSecondary = {
+  background: "#64748b",
+  color: "#fff",
+  padding: "10px 16px",
+  borderRadius: 8,
+  border: "none",
+  cursor: "pointer",
+  fontWeight: "bold"
+};
+
 // 📸 CLOUDINARY
 const uploadImage = async (file) => {
   try {
@@ -173,12 +205,34 @@ export default function App() {
 
       <h1 style={{ textAlign: "center" }}>📜 Historia de España</h1>
 
+      {/* 📢 TELEGRAM */}
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <a
+          href="https://t.me/TU_USUARIO"
+          target="_blank"
+          style={{
+            background: "#0088cc",
+            color: "#fff",
+            padding: "10px 20px",
+            borderRadius: 8,
+            textDecoration: "none",
+            fontWeight: "bold"
+          }}
+        >
+          📢 Ir a Telegram
+        </a>
+      </div>
+
       {!user ? (
-        <button onClick={login}>Iniciar sesión</button>
+        <button onClick={login} style={btnPrimary}>
+          Iniciar sesión
+        </button>
       ) : (
         <div style={{ textAlign: "center" }}>
           <p>👤 {user.email}</p>
-          <button onClick={logout}>Cerrar sesión</button>
+          <button onClick={logout} style={btnDanger}>
+            Cerrar sesión
+          </button>
         </div>
       )}
 
@@ -224,7 +278,6 @@ export default function App() {
           onChange={e => setSelectedImage(e.target.files[0])}
         />
 
-        {/* 👀 PREVIEW */}
         {selectedImage && (
           <img
             src={URL.createObjectURL(selectedImage)}
@@ -234,33 +287,12 @@ export default function App() {
 
         <br /><br />
 
-        <button
-          onClick={publish}
-          style={{
-            background: "#16a34a",
-            color: "#fff",
-            padding: "10px 20px",
-            borderRadius: 6,
-            border: "none",
-            cursor: "pointer",
-            marginRight: 10
-          }}
-        >
+        <button onClick={publish} style={btnPrimary}>
           {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
         </button>
 
         {editingId && (
-          <button
-            onClick={resetForm}
-            style={{
-              background: "#64748b",
-              color: "#fff",
-              padding: "10px 20px",
-              borderRadius: 6,
-              border: "none",
-              cursor: "pointer"
-            }}
-          >
+          <button onClick={resetForm} style={btnSecondary}>
             Cancelar
           </button>
         )}
@@ -288,14 +320,11 @@ export default function App() {
             <p>{a.content}</p>
 
             <div style={{ marginTop: 10 }}>
-              <button
-                onClick={() => startEdit(a)}
-                style={{ marginRight: 10 }}
-              >
+              <button onClick={() => startEdit(a)} style={btnPrimary}>
                 ✏️ Editar
               </button>
 
-              <button onClick={() => remove(a.id)}>
+              <button onClick={() => remove(a.id)} style={btnDanger}>
                 ❌ Eliminar
               </button>
             </div>
