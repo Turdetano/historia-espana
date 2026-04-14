@@ -25,7 +25,7 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 📸 SUBIR IMAGEN (ROBUSTO)
+// 📸 CLOUDINARY (ARREGLADO 100%)
 const uploadImage = async (file) => {
   try {
     const formData = new FormData();
@@ -33,19 +33,20 @@ const uploadImage = async (file) => {
     formData.append("upload_preset", "historia_unsigned");
 
     const res = await fetch(
-  // "https://api.cloudinary.com/v1_1/djlv6e9o3/image/upload",
-  {
-    method: "POST",
-    body: formData
-  }
-);
+      "https://api.cloudinary.com/v1_1/djlv6e9o3/image/upload",
+      {
+        method: "POST",
+        body: formData
+      }
+    );
 
     const data = await res.json();
 
     if (!data.secure_url) throw new Error();
 
     return data.secure_url;
-  } catch {
+  } catch (err) {
+    console.error(err);
     alert("❌ Error al subir imagen");
     return null;
   }
@@ -63,6 +64,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
 
+  // 🔐 AUTH
   useEffect(() => {
     onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -76,8 +78,7 @@ export default function App() {
     });
   }, []);
 
-  console.log("deploy nuevo");
-  
+  // 📚 CARGAR ARTÍCULOS
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -102,7 +103,7 @@ export default function App() {
     if (selectedImage) {
       imageUrl = await uploadImage(selectedImage);
 
-      if (imageUrl === null) {
+      if (!imageUrl) {
         setLoading(false);
         return;
       }
@@ -121,6 +122,7 @@ export default function App() {
 
     setArticles([...articles, { ...art, id: ref.id }]);
 
+    // reset
     setTitle("");
     setContent("");
     setSelectedImage(null);
@@ -211,7 +213,7 @@ export default function App() {
 
           <br /><br />
 
-          {/* BOTÓN BONITO PARA IMAGEN */}
+          {/* BOTÓN IMAGEN BONITO */}
           <label style={{
             background: "#334155",
             color: "#fff",
@@ -256,12 +258,16 @@ export default function App() {
             border: "1px solid #ccc",
             padding: 10,
             marginBottom: 10,
-            background: "#fff"
+            background: "#fff",
+            borderRadius: 8
           }}>
             <h3>{a.title}</h3>
 
             {a.image && (
-              <img src={a.image} style={{ width: "100%" }} />
+              <img
+                src={a.image}
+                style={{ width: "100%", borderRadius: 6 }}
+              />
             )}
 
             <p>{a.content}</p>
