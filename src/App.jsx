@@ -26,7 +26,7 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 📸 CLOUDINARY OK
+// 📸 CLOUDINARY
 const uploadImage = async (file) => {
   try {
     const formData = new FormData();
@@ -35,10 +35,7 @@ const uploadImage = async (file) => {
 
     const res = await fetch(
       "https://api.cloudinary.com/v1_1/djlv6e9o3/image/upload",
-      {
-        method: "POST",
-        body: formData
-      }
+      { method: "POST", body: formData }
     );
 
     const data = await res.json();
@@ -63,20 +60,10 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
 
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
 
   // 🔐 AUTH
   useEffect(() => {
-    onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-
-      if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        setRole(snap.exists() ? snap.data().role : "user");
-      } else {
-        setRole(null);
-      }
-    });
+    onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
 
   // 📚 CARGAR ARTÍCULOS
@@ -86,11 +73,9 @@ export default function App() {
     );
   }, []);
 
-  const isEditor = true;
-
   // 🚀 PUBLICAR / EDITAR
   const publish = async () => {
-    if (!isEditor || loading) return;
+    if (loading) return;
 
     if (!title || !content) {
       alert("❌ Rellena título y contenido");
@@ -118,28 +103,15 @@ export default function App() {
         ...(imageUrl && { image: imageUrl })
       });
 
-      // 🔥 actualizar UI sin recargar
       setArticles(prev =>
         prev.map(a =>
           a.id === editingId
-            ? {
-                ...a,
-                title,
-                content,
-                category,
-                ...(imageUrl && { image: imageUrl })
-              }
+            ? { ...a, title, content, category, ...(imageUrl && { image: imageUrl }) }
             : a
         )
       );
 
-      // reset
-      setEditingId(null);
-      setTitle("");
-      setContent("");
-      setSelectedImage(null);
-      setLoading(false);
-
+      resetForm();
       alert("✅ Artículo actualizado");
       return;
     }
@@ -151,34 +123,41 @@ export default function App() {
       category,
       image: imageUrl,
       date: new Date().toLocaleDateString(),
-      author: user.email
+      author: user?.email || "anon"
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
 
-    setArticles([...articles, { ...art, id: ref.id }]);
+    setArticles(prev => [...prev, { ...art, id: ref.id }]);
 
-    // reset
-    setTitle("");
-    setContent("");
-    setSelectedImage(null);
-    setLoading(false);
-
+    resetForm();
     alert("✅ Artículo publicado");
   };
 
-  // ✏️ INICIAR EDICIÓN
+  const resetForm = () => {
+    setTitle("");
+    setContent("");
+    setSelectedImage(null);
+    setEditingId(null);
+    setLoading(false);
+  };
+
+  // ✏️ EDITAR
   const startEdit = (a) => {
+    console.log("EDITANDO:", a.id);
+
     setTitle(a.title);
     setContent(a.content);
     setCategory(a.category);
     setEditingId(a.id);
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // ❌ ELIMINAR
   const remove = async (id) => {
     await deleteDoc(doc(db, "articles", id));
-    setArticles(articles.filter(a => a.id !== id));
+    setArticles(prev => prev.filter(a => a.id !== id));
   };
 
   const login = () => signInWithPopup(auth, provider);
@@ -204,52 +183,52 @@ export default function App() {
       )}
 
       {/* FORMULARIO */}
-      {isEditor && (
-        <div style={{
-          background: "#fff",
-          padding: 20,
-          borderRadius: 10,
-          marginTop: 30,
-          maxWidth: 600,
-          margin: "30px auto"
-        }}>
-          <h2>{editingId ? "✏️ Editar artículo" : "✍️ Crear artículo"}</h2>
+      <div style={{
+        background: "#fff",
+        padding: 20,
+        borderRadius: 10,
+        marginTop: 30,
+        maxWidth: 600,
+        margin: "30px auto"
+      }}>
+        <h2>
+          {editingId ? "✏️ Editando artículo..." : "✍️ Crear artículo"}
+        </h2>
 
-          <input
-            placeholder="Título"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            style={{ width: "100%", marginBottom: 10, padding: 8 }}
-          />
+        <input
+          placeholder="Título"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          style={{ width: "100%", marginBottom: 10, padding: 8 }}
+        />
 
-          <textarea
-            placeholder="Contenido"
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            style={{ width: "100%", marginBottom: 10, padding: 8 }}
-          />
+        <textarea
+          placeholder="Contenido"
+          value={content}
+          onChange={e => setContent(e.target.value)}
+          style={{ width: "100%", marginBottom: 10, padding: 8 }}
+        />
 
-          <select
-            value={category}
-            onChange={e => setCategory(e.target.value)}
-          >
-            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-          </select>
+        <select
+          value={category}
+          onChange={e => setCategory(e.target.value)}
+        >
+          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+        </select>
 
-          <br /><br />
+        <br /><br />
 
-          <input
-            type="file"
-            onChange={e => setSelectedImage(e.target.files[0])}
-          />
+        <input
+          type="file"
+          onChange={e => setSelectedImage(e.target.files[0])}
+        />
 
-          <br /><br />
+        <br /><br />
 
-          <button onClick={publish}>
-            {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
-          </button>
-        </div>
-      )}
+        <button onClick={publish}>
+          {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
+        </button>
+      </div>
 
       {/* LISTA */}
       <div style={{ marginTop: 40 }}>
@@ -271,17 +250,15 @@ export default function App() {
 
             <p>{a.content}</p>
 
-            {isEditor && (
-              <div style={{ marginTop: 10 }}>
-                <button onClick={() => startEdit(a)}>
-                  ✏️ Editar
-                </button>
+            <div style={{ marginTop: 10 }}>
+              <button onClick={() => startEdit(a)}>
+                ✏️ Editar
+              </button>
 
-                <button onClick={() => remove(a.id)}>
-                  ❌ Eliminar
-                </button>
-              </div>
-            )}
+              <button onClick={() => remove(a.id)}>
+                ❌ Eliminar
+              </button>
+            </div>
           </div>
         ))}
       </div>
