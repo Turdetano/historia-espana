@@ -5,8 +5,8 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  getDoc,
-  updateDoc
+  updateDoc,
+  getDoc
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -35,7 +35,10 @@ const uploadImage = async (file) => {
 
     const res = await fetch(
       "https://api.cloudinary.com/v1_1/djlv6e9o3/image/upload",
-      { method: "POST", body: formData }
+      {
+        method: "POST",
+        body: formData
+      }
     );
 
     const data = await res.json();
@@ -57,12 +60,10 @@ export default function App() {
   const [selectedImage, setSelectedImage] = useState(null);
 
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
-
-  // 🔥 EDITAR
-  const [editingId, setEditingId] = useState(null);
 
   // 🔐 AUTH
   useEffect(() => {
@@ -78,7 +79,7 @@ export default function App() {
     });
   }, []);
 
-  // 📚 LOAD
+  // 📚 CARGAR
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -87,7 +88,7 @@ export default function App() {
 
   const isEditor = role === "admin" || role === "editor";
 
-  // 🚀 PUBLICAR
+  // 🚀 PUBLICAR / EDITAR
   const publish = async () => {
     if (!isEditor || loading) return;
 
@@ -108,6 +109,21 @@ export default function App() {
       }
     }
 
+    // 🔥 EDITAR
+    if (editingId) {
+      await updateDoc(doc(db, "articles", editingId), {
+        title,
+        content,
+        category,
+        ...(imageUrl && { image: imageUrl })
+      });
+
+      setEditingId(null);
+      window.location.reload();
+      return;
+    }
+
+    // 🆕 CREAR
     const art = {
       title,
       content,
@@ -118,9 +134,15 @@ export default function App() {
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
+
     setArticles([...articles, { ...art, id: ref.id }]);
 
-    resetForm();
+    // reset
+    setTitle("");
+    setContent("");
+    setSelectedImage(null);
+    setLoading(false);
+
     alert("✅ Artículo publicado");
   };
 
@@ -130,34 +152,6 @@ export default function App() {
     setContent(a.content);
     setCategory(a.category);
     setEditingId(a.id);
-  };
-
-  // 💾 GUARDAR EDICIÓN
-  const saveEdit = async () => {
-    if (!editingId) return;
-
-    let imageUrl = "";
-
-    if (selectedImage) {
-      imageUrl = await uploadImage(selectedImage);
-    }
-
-    await updateDoc(doc(db, "articles", editingId), {
-      title,
-      content,
-      category,
-      ...(imageUrl && { image: imageUrl })
-    });
-
-    window.location.reload(); // simple y efectivo
-  };
-
-  const resetForm = () => {
-    setTitle("");
-    setContent("");
-    setSelectedImage(null);
-    setEditingId(null);
-    setLoading(false);
   };
 
   const remove = async (id) => {
@@ -179,26 +173,25 @@ export default function App() {
       <h1 style={{ textAlign: "center" }}>📜 Historia de España</h1>
 
       {!user ? (
-        <button onClick={login}>Iniciar sesión</button>
+        <button onClick={login}>Login</button>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p>👤 {user.email}</p>
-          <button onClick={logout}>Cerrar sesión</button>
+          <p>{user.email}</p>
+          <button onClick={logout}>Logout</button>
         </div>
       )}
 
       {/* 🔥 FORMULARIO MEJORADO */}
       {isEditor && (
         <div style={{
-          marginTop: 30,
           background: "#fff",
           padding: 20,
           borderRadius: 10,
-          boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+          marginTop: 30,
           maxWidth: 600,
-          marginInline: "auto"
+          margin: "30px auto"
         }}>
-          <h2>{editingId ? "✏️ Editar artículo" : "✍️ Crear artículo"}</h2>
+          <h2>{editingId ? "✏️ Editar" : "✍️ Crear artículo"}</h2>
 
           <input
             placeholder="Título"
@@ -214,36 +207,24 @@ export default function App() {
             style={{ width: "100%", marginBottom: 10 }}
           />
 
-          <select value={category} onChange={e => setCategory(e.target.value)}>
+          <select
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+          >
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
           </select>
 
           <br /><br />
 
-          <label style={{
-            background: "#334155",
-            color: "#fff",
-            padding: "10px",
-            borderRadius: 6,
-            cursor: "pointer"
-          }}>
-            📸 Imagen
-            <input type="file" hidden
-              onChange={e => setSelectedImage(e.target.files[0])}
-            />
-          </label>
+          <input type="file"
+            onChange={e => setSelectedImage(e.target.files[0])}
+          />
 
           <br /><br />
 
-          {!editingId ? (
-            <button onClick={publish}>
-              {loading ? "⏳..." : "🚀 Publicar"}
-            </button>
-          ) : (
-            <button onClick={saveEdit}>
-              💾 Guardar cambios
-            </button>
-          )}
+          <button onClick={publish}>
+            {editingId ? "Guardar cambios" : "Publicar"}
+          </button>
         </div>
       )}
 
@@ -254,13 +235,11 @@ export default function App() {
             background: "#fff",
             padding: 15,
             marginBottom: 15,
-            borderRadius: 10
+            borderRadius: 8
           }}>
             <h3>{a.title}</h3>
 
-            {a.image && (
-              <img src={a.image} style={{ width: "100%" }} />
-            )}
+            {a.image && <img src={a.image} style={{ width: "100%" }} />}
 
             <p>{a.content}</p>
 
@@ -273,6 +252,7 @@ export default function App() {
           </div>
         ))}
       </div>
+
     </div>
   );
 }
