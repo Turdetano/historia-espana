@@ -25,12 +25,14 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 📸 CLOUDINARY (ARREGLADO 100%)
+// 📸 CLOUDINARY (VERSIÓN SEGURA)
 const uploadImage = async (file) => {
   try {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", "historia_unsigned");
+
+    // 🔥 CAMBIO CLAVE → preset universal
+    formData.append("upload_preset", "ml_default");
 
     const res = await fetch(
       "https://api.cloudinary.com/v1_1/djlv6e9o3/image/upload",
@@ -42,11 +44,13 @@ const uploadImage = async (file) => {
 
     const data = await res.json();
 
+    console.log("Cloudinary:", data);
+
     if (!data.secure_url) throw new Error();
 
     return data.secure_url;
   } catch (err) {
-    console.error(err);
+    console.error("ERROR CLOUDINARY:", err);
     alert("❌ Error al subir imagen");
     return null;
   }
