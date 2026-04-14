@@ -76,6 +76,8 @@ export default function App() {
     });
   }, []);
 
+  console.log("deploy nuevo");
+  
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
