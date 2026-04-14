@@ -5,7 +5,8 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  getDoc
+  getDoc,
+  updateDoc
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -25,36 +26,24 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 📸 CLOUDINARY DEFINITIVO
+// 📸 CLOUDINARY OK
 const uploadImage = async (file) => {
   try {
     const formData = new FormData();
     formData.append("file", file);
-
-    // 🔥 TU PRESET NUEVO
     formData.append("upload_preset", "historia_unsigned");
 
     const res = await fetch(
       "https://api.cloudinary.com/v1_1/djlv6e9o3/image/upload",
-      {
-        method: "POST",
-        body: formData
-      }
+      { method: "POST", body: formData }
     );
 
     const data = await res.json();
-
-    console.log("Cloudinary response:", data);
-
-    if (!data.secure_url) {
-      console.error("Cloudinary error:", data);
-      throw new Error("Upload fallido");
-    }
+    if (!data.secure_url) throw new Error();
 
     return data.secure_url;
-
   } catch (err) {
-    console.error("ERROR CLOUDINARY:", err);
+    console.error(err);
     alert("❌ Error al subir imagen");
     return null;
   }
@@ -72,6 +61,9 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
 
+  // 🔥 EDITAR
+  const [editingId, setEditingId] = useState(null);
+
   // 🔐 AUTH
   useEffect(() => {
     onAuthStateChanged(auth, async (u) => {
@@ -86,7 +78,7 @@ export default function App() {
     });
   }, []);
 
-  // 📚 CARGAR ARTÍCULOS
+  // 📚 LOAD
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -110,7 +102,6 @@ export default function App() {
 
     if (selectedImage) {
       imageUrl = await uploadImage(selectedImage);
-
       if (!imageUrl) {
         setLoading(false);
         return;
@@ -127,16 +118,46 @@ export default function App() {
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
-
     setArticles([...articles, { ...art, id: ref.id }]);
 
-    // reset
+    resetForm();
+    alert("✅ Artículo publicado");
+  };
+
+  // ✏️ INICIAR EDICIÓN
+  const startEdit = (a) => {
+    setTitle(a.title);
+    setContent(a.content);
+    setCategory(a.category);
+    setEditingId(a.id);
+  };
+
+  // 💾 GUARDAR EDICIÓN
+  const saveEdit = async () => {
+    if (!editingId) return;
+
+    let imageUrl = "";
+
+    if (selectedImage) {
+      imageUrl = await uploadImage(selectedImage);
+    }
+
+    await updateDoc(doc(db, "articles", editingId), {
+      title,
+      content,
+      category,
+      ...(imageUrl && { image: imageUrl })
+    });
+
+    window.location.reload(); // simple y efectivo
+  };
+
+  const resetForm = () => {
     setTitle("");
     setContent("");
     setSelectedImage(null);
+    setEditingId(null);
     setLoading(false);
-
-    alert("✅ Artículo publicado");
   };
 
   const remove = async (id) => {
@@ -150,147 +171,104 @@ export default function App() {
   return (
     <div style={{
       background: "#f1f5f9",
-      color: "#0f172a",
       minHeight: "100vh",
       padding: 20,
       fontFamily: "Arial"
     }}>
-      
-      <h1 style={{ textAlign: "center" }}>
-        📜 Historia de España
-      </h1>
+
+      <h1 style={{ textAlign: "center" }}>📜 Historia de España</h1>
 
       {!user ? (
-        <button onClick={login} style={{
-          background: "#2563eb",
-          color: "#fff",
-          padding: "10px 20px",
-          borderRadius: 8,
-          border: "none",
-          cursor: "pointer",
-          display: "block",
-          margin: "20px auto",
-          fontWeight: "bold"
-        }}>
-          Iniciar sesión
-        </button>
+        <button onClick={login}>Iniciar sesión</button>
       ) : (
         <div style={{ textAlign: "center" }}>
           <p>👤 {user.email}</p>
-
-          <button onClick={logout} style={{
-            background: "#dc2626",
-            color: "#fff",
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "none",
-            cursor: "pointer"
-          }}>
-            Cerrar sesión
-          </button>
+          <button onClick={logout}>Cerrar sesión</button>
         </div>
       )}
 
+      {/* 🔥 FORMULARIO MEJORADO */}
       {isEditor && (
-        <div style={{ marginTop: 30 }}>
-          <h2>✍️ Crear artículo</h2>
+        <div style={{
+          marginTop: 30,
+          background: "#fff",
+          padding: 20,
+          borderRadius: 10,
+          boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+          maxWidth: 600,
+          marginInline: "auto"
+        }}>
+          <h2>{editingId ? "✏️ Editar artículo" : "✍️ Crear artículo"}</h2>
 
           <input
             placeholder="Título"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            style={{ width: "100%", padding: 10, marginBottom: 10 }}
+            style={{ width: "100%", marginBottom: 10 }}
           />
 
           <textarea
             placeholder="Contenido"
             value={content}
             onChange={e => setContent(e.target.value)}
-            style={{ width: "100%", padding: 10, marginBottom: 10 }}
+            style={{ width: "100%", marginBottom: 10 }}
           />
 
-          <select
-            value={category}
-            onChange={e => setCategory(e.target.value)}
-            style={{ padding: 8 }}
-          >
-            {CATEGORIES.map(c => (
-              <option key={c}>{c}</option>
-            ))}
+          <select value={category} onChange={e => setCategory(e.target.value)}>
+            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
           </select>
 
           <br /><br />
 
-          {/* BOTÓN IMAGEN BONITO */}
           <label style={{
             background: "#334155",
             color: "#fff",
-            padding: "10px 15px",
+            padding: "10px",
             borderRadius: 6,
-            cursor: "pointer",
-            fontWeight: "bold"
+            cursor: "pointer"
           }}>
-            📸 Seleccionar imagen
-            <input
-              type="file"
+            📸 Imagen
+            <input type="file" hidden
               onChange={e => setSelectedImage(e.target.files[0])}
-              style={{ display: "none" }}
             />
           </label>
 
           <br /><br />
 
-          <button
-            onClick={publish}
-            disabled={loading}
-            style={{
-              background: loading ? "#94a3b8" : "#16a34a",
-              color: "#fff",
-              padding: "12px 20px",
-              borderRadius: 8,
-              border: "none",
-              cursor: loading ? "not-allowed" : "pointer",
-              fontWeight: "bold"
-            }}
-          >
-            {loading ? "⏳ Subiendo..." : "🚀 Publicar artículo"}
-          </button>
+          {!editingId ? (
+            <button onClick={publish}>
+              {loading ? "⏳..." : "🚀 Publicar"}
+            </button>
+          ) : (
+            <button onClick={saveEdit}>
+              💾 Guardar cambios
+            </button>
+          )}
         </div>
       )}
 
+      {/* 📚 LISTA */}
       <div style={{ marginTop: 40 }}>
-        <h2>📚 Artículos</h2>
-
         {articles.map(a => (
           <div key={a.id} style={{
-            border: "1px solid #ccc",
-            padding: 10,
-            marginBottom: 10,
             background: "#fff",
-            borderRadius: 8
+            padding: 15,
+            marginBottom: 15,
+            borderRadius: 10
           }}>
             <h3>{a.title}</h3>
 
             {a.image && (
-              <img
-                src={a.image}
-                style={{ width: "100%", borderRadius: 6 }}
-              />
+              <img src={a.image} style={{ width: "100%" }} />
             )}
 
             <p>{a.content}</p>
 
             {isEditor && (
-              <button onClick={() => remove(a.id)} style={{
-                background: "#dc2626",
-                color: "#fff",
-                padding: "6px 12px",
-                borderRadius: 6,
-                border: "none",
-                marginTop: 10
-              }}>
-                ❌ Eliminar
-              </button>
+              <>
+                <button onClick={() => startEdit(a)}>✏️ Editar</button>
+                <button onClick={() => remove(a.id)}>❌ Eliminar</button>
+              </>
             )}
           </div>
         ))}
