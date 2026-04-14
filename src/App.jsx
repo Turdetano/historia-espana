@@ -5,8 +5,7 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  updateDoc,
-  getDoc
+  updateDoc
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -66,7 +65,7 @@ export default function App() {
     onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
 
-  // 📚 CARGAR ARTÍCULOS
+  // 📚 CARGAR
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -144,8 +143,6 @@ export default function App() {
 
   // ✏️ EDITAR
   const startEdit = (a) => {
-    console.log("EDITANDO:", a.id);
-
     setTitle(a.title);
     setContent(a.content);
     setCategory(a.category);
@@ -156,6 +153,9 @@ export default function App() {
 
   // ❌ ELIMINAR
   const remove = async (id) => {
+    const confirmDelete = confirm("¿Eliminar este artículo?");
+    if (!confirmDelete) return;
+
     await deleteDoc(doc(db, "articles", id));
     setArticles(prev => prev.filter(a => a.id !== id));
   };
@@ -189,7 +189,8 @@ export default function App() {
         borderRadius: 10,
         marginTop: 30,
         maxWidth: 600,
-        margin: "30px auto"
+        margin: "30px auto",
+        boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
       }}>
         <h2>
           {editingId ? "✏️ Editando artículo..." : "✍️ Crear artículo"}
@@ -199,14 +200,14 @@ export default function App() {
           placeholder="Título"
           value={title}
           onChange={e => setTitle(e.target.value)}
-          style={{ width: "100%", marginBottom: 10, padding: 8 }}
+          style={{ width: "100%", marginBottom: 10, padding: 10 }}
         />
 
         <textarea
           placeholder="Contenido"
           value={content}
           onChange={e => setContent(e.target.value)}
-          style={{ width: "100%", marginBottom: 10, padding: 8 }}
+          style={{ width: "100%", marginBottom: 10, padding: 10 }}
         />
 
         <select
@@ -223,11 +224,46 @@ export default function App() {
           onChange={e => setSelectedImage(e.target.files[0])}
         />
 
+        {/* 👀 PREVIEW */}
+        {selectedImage && (
+          <img
+            src={URL.createObjectURL(selectedImage)}
+            style={{ width: "100%", marginTop: 10, borderRadius: 6 }}
+          />
+        )}
+
         <br /><br />
 
-        <button onClick={publish}>
+        <button
+          onClick={publish}
+          style={{
+            background: "#16a34a",
+            color: "#fff",
+            padding: "10px 20px",
+            borderRadius: 6,
+            border: "none",
+            cursor: "pointer",
+            marginRight: 10
+          }}
+        >
           {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
         </button>
+
+        {editingId && (
+          <button
+            onClick={resetForm}
+            style={{
+              background: "#64748b",
+              color: "#fff",
+              padding: "10px 20px",
+              borderRadius: 6,
+              border: "none",
+              cursor: "pointer"
+            }}
+          >
+            Cancelar
+          </button>
+        )}
       </div>
 
       {/* LISTA */}
@@ -237,7 +273,8 @@ export default function App() {
             background: "#fff",
             padding: 15,
             marginBottom: 15,
-            borderRadius: 8
+            borderRadius: 8,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
           }}>
             <h3>{a.title}</h3>
 
@@ -251,7 +288,10 @@ export default function App() {
             <p>{a.content}</p>
 
             <div style={{ marginTop: 10 }}>
-              <button onClick={() => startEdit(a)}>
+              <button
+                onClick={() => startEdit(a)}
+                style={{ marginRight: 10 }}
+              >
                 ✏️ Editar
               </button>
 
