@@ -79,7 +79,7 @@ export default function App() {
     });
   }, []);
 
-  // 📚 CARGAR
+  // 📚 CARGAR ARTÍCULOS
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -109,7 +109,7 @@ export default function App() {
       }
     }
 
-    // 🔥 EDITAR
+    // ✏️ EDITAR
     if (editingId) {
       await updateDoc(doc(db, "articles", editingId), {
         title,
@@ -118,8 +118,29 @@ export default function App() {
         ...(imageUrl && { image: imageUrl })
       });
 
+      // 🔥 actualizar UI sin recargar
+      setArticles(prev =>
+        prev.map(a =>
+          a.id === editingId
+            ? {
+                ...a,
+                title,
+                content,
+                category,
+                ...(imageUrl && { image: imageUrl })
+              }
+            : a
+        )
+      );
+
+      // reset
       setEditingId(null);
-      window.location.reload();
+      setTitle("");
+      setContent("");
+      setSelectedImage(null);
+      setLoading(false);
+
+      alert("✅ Artículo actualizado");
       return;
     }
 
@@ -154,6 +175,7 @@ export default function App() {
     setEditingId(a.id);
   };
 
+  // ❌ ELIMINAR
   const remove = async (id) => {
     await deleteDoc(doc(db, "articles", id));
     setArticles(articles.filter(a => a.id !== id));
@@ -173,15 +195,15 @@ export default function App() {
       <h1 style={{ textAlign: "center" }}>📜 Historia de España</h1>
 
       {!user ? (
-        <button onClick={login}>Login</button>
+        <button onClick={login}>Iniciar sesión</button>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p>{user.email}</p>
-          <button onClick={logout}>Logout</button>
+          <p>👤 {user.email}</p>
+          <button onClick={logout}>Cerrar sesión</button>
         </div>
       )}
 
-      {/* 🔥 FORMULARIO MEJORADO */}
+      {/* FORMULARIO */}
       {isEditor && (
         <div style={{
           background: "#fff",
@@ -191,20 +213,20 @@ export default function App() {
           maxWidth: 600,
           margin: "30px auto"
         }}>
-          <h2>{editingId ? "✏️ Editar" : "✍️ Crear artículo"}</h2>
+          <h2>{editingId ? "✏️ Editar artículo" : "✍️ Crear artículo"}</h2>
 
           <input
             placeholder="Título"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            style={{ width: "100%", marginBottom: 10 }}
+            style={{ width: "100%", marginBottom: 10, padding: 8 }}
           />
 
           <textarea
             placeholder="Contenido"
             value={content}
             onChange={e => setContent(e.target.value)}
-            style={{ width: "100%", marginBottom: 10 }}
+            style={{ width: "100%", marginBottom: 10, padding: 8 }}
           />
 
           <select
@@ -216,19 +238,20 @@ export default function App() {
 
           <br /><br />
 
-          <input type="file"
+          <input
+            type="file"
             onChange={e => setSelectedImage(e.target.files[0])}
           />
 
           <br /><br />
 
           <button onClick={publish}>
-            {editingId ? "Guardar cambios" : "Publicar"}
+            {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
           </button>
         </div>
       )}
 
-      {/* 📚 LISTA */}
+      {/* LISTA */}
       <div style={{ marginTop: 40 }}>
         {articles.map(a => (
           <div key={a.id} style={{
@@ -239,15 +262,25 @@ export default function App() {
           }}>
             <h3>{a.title}</h3>
 
-            {a.image && <img src={a.image} style={{ width: "100%" }} />}
+            {a.image && (
+              <img
+                src={a.image}
+                style={{ width: "100%", borderRadius: 6 }}
+              />
+            )}
 
             <p>{a.content}</p>
 
             {isEditor && (
-              <>
-                <button onClick={() => startEdit(a)}>✏️ Editar</button>
-                <button onClick={() => remove(a.id)}>❌ Eliminar</button>
-              </>
+              <div style={{ marginTop: 10 }}>
+                <button onClick={() => startEdit(a)}>
+                  ✏️ Editar
+                </button>
+
+                <button onClick={() => remove(a.id)}>
+                  ❌ Eliminar
+                </button>
+              </div>
             )}
           </div>
         ))}
