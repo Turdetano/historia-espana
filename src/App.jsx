@@ -86,7 +86,7 @@ export default function App() {
     );
   }, []);
 
-  const isEditor = role === "admin" || role === "editor";
+  const isEditor = true;
 
   // 🚀 PUBLICAR / EDITAR
   const publish = async () => {
