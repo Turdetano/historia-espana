@@ -25,12 +25,12 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 🎨 BOTONES PRO
+// 🎨 BOTONES
 const btnPrimary = {
   background: "#2563eb",
   color: "#fff",
-  padding: "10px 16px",
-  borderRadius: 8,
+  padding: "12px 18px",
+  borderRadius: 10,
   border: "none",
   cursor: "pointer",
   marginRight: 10,
@@ -40,18 +40,18 @@ const btnPrimary = {
 const btnDanger = {
   background: "#dc2626",
   color: "#fff",
-  padding: "10px 16px",
-  borderRadius: 8,
+  padding: "12px 18px",
+  borderRadius: 10,
   border: "none",
   cursor: "pointer",
   fontWeight: "bold"
 };
 
 const btnSecondary = {
-  background: "#64748b",
+  background: "#475569",
   color: "#fff",
-  padding: "10px 16px",
-  borderRadius: 8,
+  padding: "12px 18px",
+  borderRadius: 10,
   border: "none",
   cursor: "pointer",
   fontWeight: "bold"
@@ -121,6 +121,7 @@ export default function App() {
       }
     }
 
+    // ✏️ EDITAR
     if (editingId) {
       await updateDoc(doc(db, "articles", editingId), {
         title,
@@ -141,18 +142,35 @@ export default function App() {
       return;
     }
 
+    // 🆕 CREAR
     const art = {
       title,
       content,
       category,
       image: imageUrl,
       date: new Date().toLocaleDateString(),
-      author: user?.email || "Tartessos"
+      author: "Tartessos"
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
 
     setArticles(prev => [...prev, { ...art, id: ref.id }]);
+
+    // 📢 TELEGRAM
+    try {
+      await fetch("/api/telegram", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          title,
+          content
+        })
+      });
+    } catch (err) {
+      console.error("Error Telegram:", err);
+    }
 
     resetForm();
   };
@@ -187,7 +205,7 @@ export default function App() {
 
       <h1 style={{ textAlign: "center" }}>📜 Historia de España</h1>
 
-      {/* TELEGRAM PRO */}
+      {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <a
           href="https://t.me/Hispania_Imperial"
@@ -202,7 +220,7 @@ export default function App() {
             fontWeight: "bold"
           }}
         >
-          📢 Canal Hispania Imperial (Tartessos)
+          📢 Canal Hispania Imperial
         </a>
       </div>
 
@@ -219,7 +237,7 @@ export default function App() {
         </div>
       )}
 
-      {/* FORM */}
+      {/* FORMULARIO */}
       <div style={{
         background: "#fff",
         padding: 20,
@@ -227,11 +245,21 @@ export default function App() {
         maxWidth: 600,
         margin: "30px auto"
       }}>
-        <h2>{editingId ? "✏️ Editando..." : "✍️ Crear artículo"}</h2>
+        <h2>{editingId ? "✏️ Editando artículo" : "✍️ Crear artículo"}</h2>
 
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10 }} />
+        <input
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Título"
+          style={{ width: "100%", marginBottom: 10, padding: 10 }}
+        />
 
-        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10 }} />
+        <textarea
+          value={content}
+          onChange={e => setContent(e.target.value)}
+          placeholder="Contenido"
+          style={{ width: "100%", marginBottom: 10, padding: 10 }}
+        />
 
         <select value={category} onChange={e => setCategory(e.target.value)}>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -239,20 +267,22 @@ export default function App() {
 
         <br /><br />
 
-        {/* BOTÓN IMAGEN BONITO */}
-        <label style={btnSecondary}>
-          📸 Seleccionar imagen
-          <input type="file" hidden onChange={e => setSelectedImage(e.target.files[0])} />
-        </label>
+        <input
+          type="file"
+          onChange={e => setSelectedImage(e.target.files[0])}
+        />
 
         {selectedImage && (
-          <img src={URL.createObjectURL(selectedImage)} style={{ width: "100%", marginTop: 10 }} />
+          <img
+            src={URL.createObjectURL(selectedImage)}
+            style={{ width: "100%", marginTop: 10, borderRadius: 6 }}
+          />
         )}
 
         <br /><br />
 
         <button onClick={publish} style={btnPrimary}>
-          {editingId ? "💾 Guardar" : "🚀 Publicar"}
+          {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
         </button>
 
         {editingId && (
@@ -262,7 +292,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 🔥 ARTÍCULOS POR CATEGORÍA */}
+      {/* ARTÍCULOS POR CATEGORÍA */}
       {CATEGORIES.map(cat => (
         <div key={cat} style={{ marginTop: 40 }}>
           <h2>📚 {cat}</h2>
@@ -276,24 +306,38 @@ export default function App() {
             }}>
               <h3>{a.title}</h3>
 
-              {a.image && <img src={a.image} style={{ width: "100%" }} />}
+              {a.image && (
+                <img src={a.image} style={{ width: "100%", borderRadius: 6 }} />
+              )}
 
               <p>{a.content}</p>
 
-              <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
-              <button onClick={() => remove(a.id)} style={btnDanger}>❌ Eliminar</button>
+              <button onClick={() => startEdit(a)} style={btnPrimary}>
+                ✏️ Editar
+              </button>
+
+              <button onClick={() => remove(a.id)} style={btnDanger}>
+                ❌ Eliminar
+              </button>
             </div>
           ))}
         </div>
       ))}
 
-      {/* 🔗 ENLACES */}
+      {/* ENLACES */}
       <div style={{ marginTop: 50 }}>
         <h2>🔗 Enlaces de interés</h2>
-
         <ul>
-          <li><a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank">Historia de España (Wikipedia)</a></li>
-          <li><a href="https://www.cervantesvirtual.com/" target="_blank">Biblioteca Cervantes</a></li>
+          <li>
+            <a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank">
+              Historia de España (Wikipedia)
+            </a>
+          </li>
+          <li>
+            <a href="https://www.cervantesvirtual.com/" target="_blank">
+              Biblioteca Cervantes
+            </a>
+          </li>
         </ul>
       </div>
 
