@@ -5,8 +5,7 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  updateDoc,
-  getDoc
+  updateDoc
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -26,10 +25,7 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 👉 CAMBIA AQUÍ TU TELEGRAM
-const TELEGRAM_LINK = "https://t.me/Tartessos";
-
-// 🎨 ESTILOS
+// 🎨 BOTONES PRO
 const btnPrimary = {
   background: "#2563eb",
   color: "#fff",
@@ -37,6 +33,7 @@ const btnPrimary = {
   borderRadius: 8,
   border: "none",
   cursor: "pointer",
+  marginRight: 10,
   fontWeight: "bold"
 };
 
@@ -46,7 +43,8 @@ const btnDanger = {
   padding: "10px 16px",
   borderRadius: 8,
   border: "none",
-  cursor: "pointer"
+  cursor: "pointer",
+  fontWeight: "bold"
 };
 
 const btnSecondary = {
@@ -55,7 +53,8 @@ const btnSecondary = {
   padding: "10px 16px",
   borderRadius: 8,
   border: "none",
-  cursor: "pointer"
+  cursor: "pointer",
+  fontWeight: "bold"
 };
 
 // 📸 CLOUDINARY
@@ -91,32 +90,19 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
 
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState("user");
 
-  // 🔐 AUTH + ROLE
   useEffect(() => {
-    onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-
-      if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) setRole(snap.data().role);
-      }
-    });
+    onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
 
-  const isEditor = role === "admin" || role === "editor";
-
-  // 📚 CARGAR
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
     );
   }, []);
 
-  // 🚀 PUBLICAR / EDITAR
   const publish = async () => {
-    if (!isEditor || loading) return;
+    if (loading) return;
 
     if (!title || !content) {
       alert("❌ Rellena título y contenido");
@@ -129,7 +115,10 @@ export default function App() {
 
     if (selectedImage) {
       imageUrl = await uploadImage(selectedImage);
-      if (!imageUrl) return setLoading(false);
+      if (!imageUrl) {
+        setLoading(false);
+        return;
+      }
     }
 
     if (editingId) {
@@ -158,10 +147,11 @@ export default function App() {
       category,
       image: imageUrl,
       date: new Date().toLocaleDateString(),
-      author: user?.email || "anon"
+      author: user?.email || "Tartessos"
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
+
     setArticles(prev => [...prev, { ...art, id: ref.id }]);
 
     resetForm();
@@ -184,7 +174,7 @@ export default function App() {
   };
 
   const remove = async (id) => {
-    if (!confirm("¿Eliminar artículo?")) return;
+    if (!confirm("¿Eliminar este artículo?")) return;
     await deleteDoc(doc(db, "articles", id));
     setArticles(prev => prev.filter(a => a.id !== id));
   };
@@ -192,132 +182,120 @@ export default function App() {
   const login = () => signInWithPopup(auth, provider);
   const logout = () => signOut(auth);
 
-  // 🔥 AGRUPAR POR CATEGORÍA
-  const grouped = CATEGORIES.map(cat => ({
-    name: cat,
-    items: articles.filter(a => a.category === cat)
-  }));
-
   return (
     <div style={{ background: "#f1f5f9", minHeight: "100vh", padding: 20 }}>
 
       <h1 style={{ textAlign: "center" }}>📜 Historia de España</h1>
 
-      {/* TELEGRAM */}
+      {/* TELEGRAM PRO */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <a href={TELEGRAM_LINK} target="_blank" style={btnPrimary}>
-          📢 Telegram
+        <a
+          href="https://t.me/Hispania_Imperial"
+          target="_blank"
+          style={{
+            display: "inline-block",
+            background: "#0088cc",
+            color: "#fff",
+            padding: "12px 20px",
+            borderRadius: 10,
+            textDecoration: "none",
+            fontWeight: "bold"
+          }}
+        >
+          📢 Canal Hispania Imperial (Tartessos)
         </a>
       </div>
 
-      {/* LOGIN */}
       {!user ? (
         <button onClick={login} style={btnPrimary}>
           Iniciar sesión
         </button>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p>{user.email} ({role})</p>
-          <button onClick={logout} style={btnDanger}>Cerrar sesión</button>
-        </div>
-      )}
-
-      {/* FORM SOLO EDITOR */}
-      {isEditor && (
-        <div style={{
-          background: "#fff",
-          padding: 20,
-          borderRadius: 10,
-          margin: "30px auto",
-          maxWidth: 600
-        }}>
-          <h2>{editingId ? "✏️ Editar" : "🆕 Crear artículo"}</h2>
-
-          <input
-            placeholder="Título"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            style={{ width: "100%", padding: 10 }}
-          />
-
-          <textarea
-            placeholder="Contenido"
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            style={{ width: "100%", padding: 10, marginTop: 10 }}
-          />
-
-          <select
-            value={category}
-            onChange={e => setCategory(e.target.value)}
-          >
-            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-          </select>
-
-          <br /><br />
-
-          {/* BOTÓN BONITO IMAGEN */}
-          <label style={{
-            ...btnSecondary,
-            display: "inline-block"
-          }}>
-            📸 Seleccionar imagen
-            <input
-              type="file"
-              hidden
-              onChange={e => setSelectedImage(e.target.files[0])}
-            />
-          </label>
-
-          {selectedImage && (
-            <img src={URL.createObjectURL(selectedImage)} style={{ width: "100%", marginTop: 10 }} />
-          )}
-
-          <br /><br />
-
-          <button onClick={publish} style={btnPrimary}>
-            {editingId ? "Guardar" : "Publicar"}
+          <p>👤 Tartessos</p>
+          <button onClick={logout} style={btnDanger}>
+            Cerrar sesión
           </button>
         </div>
       )}
 
-      {/* ENLACES */}
-      <div style={{ marginBottom: 30 }}>
-        <h2>🔗 Enlaces de interés</h2>
-        <ul>
-          <li><a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank">Wikipedia</a></li>
-          <li><a href="https://www.bne.es" target="_blank">Biblioteca Nacional</a></li>
-        </ul>
+      {/* FORM */}
+      <div style={{
+        background: "#fff",
+        padding: 20,
+        borderRadius: 10,
+        maxWidth: 600,
+        margin: "30px auto"
+      }}>
+        <h2>{editingId ? "✏️ Editando..." : "✍️ Crear artículo"}</h2>
+
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10 }} />
+
+        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10 }} />
+
+        <select value={category} onChange={e => setCategory(e.target.value)}>
+          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+        </select>
+
+        <br /><br />
+
+        {/* BOTÓN IMAGEN BONITO */}
+        <label style={btnSecondary}>
+          📸 Seleccionar imagen
+          <input type="file" hidden onChange={e => setSelectedImage(e.target.files[0])} />
+        </label>
+
+        {selectedImage && (
+          <img src={URL.createObjectURL(selectedImage)} style={{ width: "100%", marginTop: 10 }} />
+        )}
+
+        <br /><br />
+
+        <button onClick={publish} style={btnPrimary}>
+          {editingId ? "💾 Guardar" : "🚀 Publicar"}
+        </button>
+
+        {editingId && (
+          <button onClick={resetForm} style={btnSecondary}>
+            Cancelar
+          </button>
+        )}
       </div>
 
-      {/* ARTÍCULOS POR CATEGORÍA */}
-      {grouped.map(cat => (
-        <div key={cat.name}>
-          <h2>📚 {cat.name}</h2>
+      {/* 🔥 ARTÍCULOS POR CATEGORÍA */}
+      {CATEGORIES.map(cat => (
+        <div key={cat} style={{ marginTop: 40 }}>
+          <h2>📚 {cat}</h2>
 
-          {cat.items.map(a => (
+          {articles.filter(a => a.category === cat).map(a => (
             <div key={a.id} style={{
               background: "#fff",
               padding: 15,
-              marginBottom: 10,
+              marginBottom: 15,
               borderRadius: 8
             }}>
               <h3>{a.title}</h3>
+
               {a.image && <img src={a.image} style={{ width: "100%" }} />}
+
               <p>{a.content}</p>
 
-              {isEditor && (
-                <>
-                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
-                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
-                </>
-              )}
+              <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
+              <button onClick={() => remove(a.id)} style={btnDanger}>❌ Eliminar</button>
             </div>
           ))}
         </div>
-      ))
+      ))}
 
-      }
+      {/* 🔗 ENLACES */}
+      <div style={{ marginTop: 50 }}>
+        <h2>🔗 Enlaces de interés</h2>
+
+        <ul>
+          <li><a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank">Historia de España (Wikipedia)</a></li>
+          <li><a href="https://www.cervantesvirtual.com/" target="_blank">Biblioteca Cervantes</a></li>
+        </ul>
+      </div>
 
     </div>
   );
