@@ -1,4 +1,3 @@
-```jsx
 import { db, auth } from "./firebase.js";
 import {
   collection,
@@ -174,7 +173,7 @@ export default function App() {
         body: JSON.stringify({ title, content })
       });
     } catch (err) {
-      console.error("Telegram error", err);
+      console.error("Telegram error:", err);
     }
 
     resetForm();
@@ -285,8 +284,7 @@ export default function App() {
           ))}
         </select>
 
-        <br />
-        <br />
+        <br /><br />
 
         <label
           style={{
@@ -305,8 +303,7 @@ export default function App() {
           />
         </label>
 
-        <br />
-        <br />
+        <br /><br />
 
         <button onClick={publish} style={btnPrimary}>
           {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
@@ -386,4 +383,3 @@ export default function App() {
     </div>
   );
 }
-```
