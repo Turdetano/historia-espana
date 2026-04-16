@@ -25,26 +25,28 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 🎨 BOTONES
+// 🎨 BOTONES MEJORADOS
 const btnPrimary = {
-  background: "#2563eb",
+  background: "#1d4ed8",
   color: "#fff",
   padding: "12px 18px",
   borderRadius: 10,
   border: "none",
   cursor: "pointer",
   marginRight: 10,
-  fontWeight: "bold"
+  fontWeight: "bold",
+  fontSize: "14px"
 };
 
 const btnDanger = {
-  background: "#dc2626",
+  background: "#b91c1c",
   color: "#fff",
   padding: "12px 18px",
   borderRadius: 10,
   border: "none",
   cursor: "pointer",
-  fontWeight: "bold"
+  fontWeight: "bold",
+  fontSize: "14px"
 };
 
 const btnSecondary = {
@@ -54,7 +56,8 @@ const btnSecondary = {
   borderRadius: 10,
   border: "none",
   cursor: "pointer",
-  fontWeight: "bold"
+  fontWeight: "bold",
+  fontSize: "14px"
 };
 
 // 📸 CLOUDINARY
@@ -243,7 +246,8 @@ export default function App() {
         padding: 20,
         borderRadius: 10,
         maxWidth: 600,
-        margin: "30px auto"
+        margin: "30px auto",
+        boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
       }}>
         <h2>{editingId ? "✏️ Editando artículo" : "✍️ Crear artículo"}</h2>
 
@@ -267,10 +271,22 @@ export default function App() {
 
         <br /><br />
 
-        <input
-          type="file"
-          onChange={e => setSelectedImage(e.target.files[0])}
-        />
+        {/* BOTÓN IMAGEN BONITO */}
+        <label style={{
+          background: "#0f172a",
+          color: "#fff",
+          padding: "10px 15px",
+          borderRadius: 8,
+          cursor: "pointer",
+          display: "inline-block"
+        }}>
+          📸 Subir imagen
+          <input
+            type="file"
+            onChange={e => setSelectedImage(e.target.files[0])}
+            style={{ display: "none" }}
+          />
+        </label>
 
         {selectedImage && (
           <img
@@ -295,14 +311,20 @@ export default function App() {
       {/* ARTÍCULOS POR CATEGORÍA */}
       {CATEGORIES.map(cat => (
         <div key={cat} style={{ marginTop: 40 }}>
-          <h2>📚 {cat}</h2>
+          <h2 style={{
+            borderBottom: "3px solid #1d4ed8",
+            paddingBottom: 5
+          }}>
+            📚 {cat}
+          </h2>
 
           {articles.filter(a => a.category === cat).map(a => (
             <div key={a.id} style={{
               background: "#fff",
               padding: 15,
               marginBottom: 15,
-              borderRadius: 8
+              borderRadius: 8,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
             }}>
               <h3>{a.title}</h3>
 
@@ -325,20 +347,20 @@ export default function App() {
       ))}
 
       {/* ENLACES */}
-      <div style={{ marginTop: 50 }}>
+      <div style={{ marginTop: 50, textAlign: "center" }}>
         <h2>🔗 Enlaces de interés</h2>
-        <ul>
-          <li>
-            <a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank">
-              Historia de España (Wikipedia)
-            </a>
-          </li>
-          <li>
-            <a href="https://www.cervantesvirtual.com/" target="_blank">
-              Biblioteca Cervantes
-            </a>
-          </li>
-        </ul>
+
+        <p>
+          <a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank">
+            📚 Wikipedia Historia de España
+          </a>
+        </p>
+
+        <p>
+          <a href="https://www.cervantesvirtual.com/" target="_blank">
+            🏛 Biblioteca Cervantes
+          </a>
+        </p>
       </div>
 
     </div>
