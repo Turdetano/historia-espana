@@ -91,7 +91,6 @@ export default function App() {
 
   const [user, setUser] = useState(null);
 
-  // AUTH + UID
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -101,7 +100,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // CARGAR ARTÍCULOS
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -164,9 +162,7 @@ export default function App() {
     try {
       await fetch("/api/telegram", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content })
       });
     } catch {}
@@ -204,13 +200,17 @@ export default function App() {
       background: "#f1f5f9",
       minHeight: "100vh",
       padding: 20,
-      color: "#0f172a"
+      fontFamily: "Segoe UI, Arial",
+      color: "#111" // 🔥 fuerza visibilidad total
     }}>
 
+      {/* TITULO PRINCIPAL */}
       <h1 style={{
         textAlign: "center",
-        fontSize: "32px",
-        fontWeight: "bold"
+        fontSize: "36px",
+        fontWeight: "900",
+        color: "#000",
+        textShadow: "1px 1px 2px rgba(0,0,0,0.2)"
       }}>
         📜 Historia de España
       </h1>
@@ -239,7 +239,7 @@ export default function App() {
         </button>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p style={{ fontWeight: "bold" }}>👤 Tartessos</p>
+          <p style={{ fontWeight: "bold", fontSize: "18px" }}>👤 Tartessos</p>
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
@@ -253,28 +253,18 @@ export default function App() {
         borderRadius: 10,
         maxWidth: 600,
         margin: "30px auto",
-        boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
       }}>
         <h2 style={{
-          fontSize: "22px",
-          fontWeight: "bold"
+          fontSize: "26px",
+          fontWeight: "900",
+          color: "#000"
         }}>
-          {editingId ? "✏️ Editando artículo" : "✍️ Crear artículo"}
+          ✍️ Crear artículo
         </h2>
 
-        <input
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          placeholder="Título"
-          style={{ width: "100%", marginBottom: 10, padding: 10 }}
-        />
-
-        <textarea
-          value={content}
-          onChange={e => setContent(e.target.value)}
-          placeholder="Contenido"
-          style={{ width: "100%", marginBottom: 10, padding: 10 }}
-        />
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
+        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
 
         <select value={category} onChange={e => setCategory(e.target.value)}>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -290,76 +280,31 @@ export default function App() {
           cursor: "pointer"
         }}>
           📸 Subir imagen
-          <input
-            type="file"
-            onChange={e => setSelectedImage(e.target.files[0])}
-            style={{ display: "none" }}
-          />
+          <input type="file" onChange={e => setSelectedImage(e.target.files[0])} style={{ display: "none" }} />
         </label>
 
         <br /><br />
 
         <button onClick={publish} style={btnPrimary}>
-          {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
+          🚀 Publicar
         </button>
       </div>
-
-      {/* CATEGORÍAS */}
-      {CATEGORIES.map(cat => (
-        <div key={cat}>
-          <h2 style={{
-            color: "#1d4ed8",
-            fontSize: "24px",
-            fontWeight: "bold"
-          }}>
-            📚 {cat}
-          </h2>
-
-          {articles.filter(a => a.category === cat).map(a => (
-            <div key={a.id} style={{
-              background: "#fff",
-              padding: 15,
-              marginBottom: 10,
-              borderRadius: 8
-            }}>
-              <h3 style={{ fontWeight: "bold" }}>{a.title}</h3>
-              <p>{a.content}</p>
-
-              <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
-              <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
-            </div>
-          ))}
-        </div>
-      ))}
 
       {/* ENLACES */}
       <div style={{ marginTop: 40 }}>
         <h2 style={{
-          fontSize: "22px",
-          fontWeight: "bold"
+          fontSize: "24px",
+          fontWeight: "900",
+          color: "#000"
         }}>
           🔗 Enlaces de interés
         </h2>
 
-        <p>
-          <a href="https://es.hispanopedia.com/wiki/Inicio" target="_blank" style={{
-            fontWeight: "bold",
-            fontSize: "16px",
-            color: "#1d4ed8"
-          }}>
-            Hispanopedia
-          </a>
-        </p>
-
-        <p>
-          <a href="https://www.cervantesvirtual.com/" target="_blank" style={{
-            fontWeight: "bold",
-            fontSize: "16px",
-            color: "#1d4ed8"
-          }}>
-            Biblioteca Cervantes
-          </a>
-        </p>
+        <p><a href="https://es.hispanopedia.com/wiki/Inicio" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Hispanopedia</a></p>
+        <p><a href="https://www.cervantesvirtual.com/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Biblioteca Cervantes</a></p>
+        <p><a href="https://www.rae.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Real Academia Española</a></p>
+        <p><a href="https://pares.culturaydeporte.gob.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Archivos Españoles (PARES)</a></p>
+        <p><a href="https://www.bne.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Biblioteca Nacional de España</a></p>
       </div>
 
     </div>
