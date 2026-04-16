@@ -92,7 +92,7 @@ export default function App() {
 
   const [user, setUser] = useState(null);
 
-  // ✅ AUTH CORRECTO + UID
+  // AUTH + UID
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -102,10 +102,10 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 📚 CARGAR ARTÍCULOS
+  // CARGAR ARTÍCULOS
   useEffect(() => {
-    getDocs(collection(db, "articles")).then(s =>
-      setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
+    getDocs(collection(db, "articles")).then((s) =>
+      setArticles(s.docs.map((d) => ({ id: d.id, ...d.data() })))
     );
   }, []);
 
@@ -138,8 +138,8 @@ export default function App() {
         ...(imageUrl && { image: imageUrl })
       });
 
-      setArticles(prev =>
-        prev.map(a =>
+      setArticles((prev) =>
+        prev.map((a) =>
           a.id === editingId
             ? { ...a, title, content, category, ...(imageUrl && { image: imageUrl }) }
             : a
@@ -162,7 +162,7 @@ export default function App() {
 
     const ref = await addDoc(collection(db, "articles"), art);
 
-    setArticles(prev => [...prev, { ...art, id: ref.id }]);
+    setArticles((prev) => [...prev, { ...art, id: ref.id }]);
 
     // TELEGRAM
     try {
@@ -173,7 +173,9 @@ export default function App() {
         },
         body: JSON.stringify({ title, content })
       });
-    } catch {}
+    } catch (err) {
+      console.error("Telegram error", err);
+    }
 
     resetForm();
   };
@@ -195,31 +197,31 @@ export default function App() {
   };
 
   const remove = async (id) => {
-    if (!confirm("¿Eliminar este artículo?")) return;
+    if (!window.confirm("¿Eliminar este artículo?")) return;
     await deleteDoc(doc(db, "articles", id));
-    setArticles(prev => prev.filter(a => a.id !== id));
+    setArticles((prev) => prev.filter((a) => a.id !== id));
   };
 
   const login = () => signInWithPopup(auth, provider);
   const logout = () => signOut(auth);
 
   return (
-    <div style={{
-      background: "#f1f5f9",
-      minHeight: "100vh",
-      padding: 20,
-      color: "#0f172a"
-    }}>
-
-      <h1 style={{ textAlign: "center" }}>
-        📜 Historia de España
-      </h1>
+    <div
+      style={{
+        background: "#f1f5f9",
+        minHeight: "100vh",
+        padding: 20,
+        color: "#0f172a"
+      }}
+    >
+      <h1 style={{ textAlign: "center" }}>📜 Historia de España</h1>
 
       {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <a
           href="https://t.me/Hispania_Imperial"
           target="_blank"
+          rel="noopener noreferrer"
           style={{
             background: "#0088cc",
             color: "#fff",
@@ -247,53 +249,64 @@ export default function App() {
       )}
 
       {/* FORMULARIO */}
-      <div style={{
-        background: "#fff",
-        padding: 20,
-        borderRadius: 10,
-        maxWidth: 600,
-        margin: "30px auto"
-      }}>
+      <div
+        style={{
+          background: "#fff",
+          padding: 20,
+          borderRadius: 10,
+          maxWidth: 600,
+          margin: "30px auto"
+        }}
+      >
         <h2>
           {editingId ? "✏️ Editando artículo" : "✍️ Crear artículo"}
         </h2>
 
         <input
           value={title}
-          onChange={e => setTitle(e.target.value)}
+          onChange={(e) => setTitle(e.target.value)}
           placeholder="Título"
           style={{ width: "100%", marginBottom: 10, padding: 10 }}
         />
 
         <textarea
           value={content}
-          onChange={e => setContent(e.target.value)}
+          onChange={(e) => setContent(e.target.value)}
           placeholder="Contenido"
           style={{ width: "100%", marginBottom: 10, padding: 10 }}
         />
 
-        <select value={category} onChange={e => setCategory(e.target.value)}>
-          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          {CATEGORIES.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
         </select>
 
-        <br /><br />
+        <br />
+        <br />
 
-        <label style={{
-          background: "#0f172a",
-          color: "#fff",
-          padding: 10,
-          borderRadius: 6,
-          cursor: "pointer"
-        }}>
+        <label
+          style={{
+            background: "#0f172a",
+            color: "#fff",
+            padding: 10,
+            borderRadius: 6,
+            cursor: "pointer"
+          }}
+        >
           📸 Subir imagen
           <input
             type="file"
-            onChange={e => setSelectedImage(e.target.files[0])}
+            onChange={(e) => setSelectedImage(e.target.files[0])}
             style={{ display: "none" }}
           />
         </label>
 
-        <br /><br />
+        <br />
+        <br />
 
         <button onClick={publish} style={btnPrimary}>
           {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
@@ -307,19 +320,42 @@ export default function App() {
       </div>
 
       {/* CATEGORÍAS */}
-      {CATEGORIES.map(cat => (
+      {CATEGORIES.map((cat) => (
         <div key={cat}>
           <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
 
-          {articles.filter(a => a.category === cat).map(a => (
-            <div key={a.id} style={{ background: "#fff", padding: 15, marginBottom: 10 }}>
-              <h3>{a.title}</h3>
-              <p>{a.content}</p>
+          {articles
+            .filter((a) => a.category === cat)
+            .map((a) => (
+              <div
+                key={a.id}
+                style={{
+                  background: "#fff",
+                  padding: 15,
+                  marginBottom: 10,
+                  borderRadius: 8
+                }}
+              >
+                <h3>{a.title}</h3>
 
-              <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
-              <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
-            </div>
-          ))}
+                {a.image && (
+                  <img
+                    src={a.image}
+                    style={{ width: "100%", borderRadius: 6 }}
+                  />
+                )}
+
+                <p>{a.content}</p>
+
+                <button onClick={() => startEdit(a)} style={btnPrimary}>
+                  ✏️ Editar
+                </button>
+
+                <button onClick={() => remove(a.id)} style={btnDanger}>
+                  ❌ Eliminar
+                </button>
+              </div>
+            ))}
         </div>
       ))}
 
@@ -328,18 +364,25 @@ export default function App() {
         <h2>🔗 Enlaces de interés</h2>
 
         <p>
-          <a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank">
+          <a
+            href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Wikipedia Historia de España
           </a>
         </p>
 
         <p>
-          <a href="https://www.cervantesvirtual.com/" target="_blank">
+          <a
+            href="https://www.cervantesvirtual.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Biblioteca Cervantes
           </a>
         </p>
       </div>
-
     </div>
   );
 }
