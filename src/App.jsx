@@ -97,6 +97,7 @@ export default function App() {
       setUser(u);
       console.log("UID:", u?.uid);
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -127,7 +128,6 @@ export default function App() {
       }
     }
 
-    // EDITAR
     if (editingId) {
       await updateDoc(doc(db, "articles", editingId), {
         title,
@@ -148,7 +148,6 @@ export default function App() {
       return;
     }
 
-    // CREAR
     const art = {
       title,
       content,
@@ -162,7 +161,6 @@ export default function App() {
 
     setArticles(prev => [...prev, { ...art, id: ref.id }]);
 
-    // TELEGRAM
     try {
       await fetch("/api/telegram", {
         method: "POST",
@@ -206,10 +204,14 @@ export default function App() {
       background: "#f1f5f9",
       minHeight: "100vh",
       padding: 20,
-      color: "#000" // 🔥 FORZAMOS VISIBILIDAD TOTAL
+      color: "#0f172a"
     }}>
 
-      <h1 style={{ textAlign: "center", color: "#000" }}>
+      <h1 style={{
+        textAlign: "center",
+        fontSize: "32px",
+        fontWeight: "bold"
+      }}>
         📜 Historia de España
       </h1>
 
@@ -237,7 +239,7 @@ export default function App() {
         </button>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p style={{ color: "#000" }}>👤 Tartessos</p>
+          <p style={{ fontWeight: "bold" }}>👤 Tartessos</p>
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
@@ -250,9 +252,13 @@ export default function App() {
         padding: 20,
         borderRadius: 10,
         maxWidth: 600,
-        margin: "30px auto"
+        margin: "30px auto",
+        boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
       }}>
-        <h2 style={{ color: "#000" }}>
+        <h2 style={{
+          fontSize: "22px",
+          fontWeight: "bold"
+        }}>
           {editingId ? "✏️ Editando artículo" : "✍️ Crear artículo"}
         </h2>
 
@@ -277,7 +283,7 @@ export default function App() {
         <br /><br />
 
         <label style={{
-          background: "#000",
+          background: "#0f172a",
           color: "#fff",
           padding: 10,
           borderRadius: 6,
@@ -296,23 +302,28 @@ export default function App() {
         <button onClick={publish} style={btnPrimary}>
           {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
         </button>
-
-        {editingId && (
-          <button onClick={resetForm} style={btnSecondary}>
-            Cancelar
-          </button>
-        )}
       </div>
 
       {/* CATEGORÍAS */}
       {CATEGORIES.map(cat => (
         <div key={cat}>
-          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
+          <h2 style={{
+            color: "#1d4ed8",
+            fontSize: "24px",
+            fontWeight: "bold"
+          }}>
+            📚 {cat}
+          </h2>
 
           {articles.filter(a => a.category === cat).map(a => (
-            <div key={a.id} style={{ background: "#fff", padding: 15, marginBottom: 10 }}>
-              <h3 style={{ color: "#000" }}>{a.title}</h3>
-              <p style={{ color: "#000" }}>{a.content}</p>
+            <div key={a.id} style={{
+              background: "#fff",
+              padding: 15,
+              marginBottom: 10,
+              borderRadius: 8
+            }}>
+              <h3 style={{ fontWeight: "bold" }}>{a.title}</h3>
+              <p>{a.content}</p>
 
               <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
               <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
@@ -323,16 +334,29 @@ export default function App() {
 
       {/* ENLACES */}
       <div style={{ marginTop: 40 }}>
-        <h2 style={{ color: "#000" }}>🔗 Enlaces de interés</h2>
+        <h2 style={{
+          fontSize: "22px",
+          fontWeight: "bold"
+        }}>
+          🔗 Enlaces de interés
+        </h2>
 
         <p>
-          <a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank" style={{ color: "#1d4ed8" }}>
-            Wikipedia Historia de España
+          <a href="https://es.hispanopedia.com/wiki/Inicio" target="_blank" style={{
+            fontWeight: "bold",
+            fontSize: "16px",
+            color: "#1d4ed8"
+          }}>
+            Hispanopedia
           </a>
         </p>
 
         <p>
-          <a href="https://www.cervantesvirtual.com/" target="_blank" style={{ color: "#1d4ed8" }}>
+          <a href="https://www.cervantesvirtual.com/" target="_blank" style={{
+            fontWeight: "bold",
+            fontSize: "16px",
+            color: "#1d4ed8"
+          }}>
             Biblioteca Cervantes
           </a>
         </p>
