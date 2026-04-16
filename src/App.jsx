@@ -1,3 +1,4 @@
+```jsx
 import { db, auth } from "./firebase.js";
 import {
   collection,
@@ -91,12 +92,17 @@ export default function App() {
 
   const [user, setUser] = useState(null);
 
+  // ✅ AUTH CORRECTO + UID
   useEffect(() => {
-    auth, (u) => setUser(u));
- onAuthStateChanged(auth, (u) => {
-  setUser(u);
-  console.log("UID:", u?.uid);
-});
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      console.log("UID:", u?.uid);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 📚 CARGAR ARTÍCULOS
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -123,6 +129,7 @@ export default function App() {
       }
     }
 
+    // EDITAR
     if (editingId) {
       await updateDoc(doc(db, "articles", editingId), {
         title,
@@ -143,6 +150,7 @@ export default function App() {
       return;
     }
 
+    // CREAR
     const art = {
       title,
       content,
@@ -156,10 +164,13 @@ export default function App() {
 
     setArticles(prev => [...prev, { ...art, id: ref.id }]);
 
+    // TELEGRAM
     try {
       await fetch("/api/telegram", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({ title, content })
       });
     } catch {}
@@ -197,10 +208,10 @@ export default function App() {
       background: "#f1f5f9",
       minHeight: "100vh",
       padding: 20,
-      color: "#0f172a" // 🔥 CLAVE
+      color: "#0f172a"
     }}>
 
-      <h1 style={{ textAlign: "center", color: "#0f172a" }}>
+      <h1 style={{ textAlign: "center" }}>
         📜 Historia de España
       </h1>
 
@@ -228,7 +239,7 @@ export default function App() {
         </button>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p style={{ color: "#0f172a" }}>👤 Tartessos</p>
+          <p>👤 Tartessos</p>
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
@@ -243,12 +254,23 @@ export default function App() {
         maxWidth: 600,
         margin: "30px auto"
       }}>
-        <h2 style={{ color: "#0f172a" }}>
+        <h2>
           {editingId ? "✏️ Editando artículo" : "✍️ Crear artículo"}
         </h2>
 
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", padding: 10 }} />
-        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", padding: 10 }} />
+        <input
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Título"
+          style={{ width: "100%", marginBottom: 10, padding: 10 }}
+        />
+
+        <textarea
+          value={content}
+          onChange={e => setContent(e.target.value)}
+          placeholder="Contenido"
+          style={{ width: "100%", marginBottom: 10, padding: 10 }}
+        />
 
         <select value={category} onChange={e => setCategory(e.target.value)}>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -256,9 +278,19 @@ export default function App() {
 
         <br /><br />
 
-        <label style={{ background: "#0f172a", color: "#fff", padding: 10, borderRadius: 6, cursor: "pointer" }}>
+        <label style={{
+          background: "#0f172a",
+          color: "#fff",
+          padding: 10,
+          borderRadius: 6,
+          cursor: "pointer"
+        }}>
           📸 Subir imagen
-          <input type="file" onChange={e => setSelectedImage(e.target.files[0])} style={{ display: "none" }} />
+          <input
+            type="file"
+            onChange={e => setSelectedImage(e.target.files[0])}
+            style={{ display: "none" }}
+          />
         </label>
 
         <br /><br />
@@ -266,6 +298,12 @@ export default function App() {
         <button onClick={publish} style={btnPrimary}>
           {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
         </button>
+
+        {editingId && (
+          <button onClick={resetForm} style={btnSecondary}>
+            Cancelar
+          </button>
+        )}
       </div>
 
       {/* CATEGORÍAS */}
@@ -286,17 +324,17 @@ export default function App() {
       ))}
 
       {/* ENLACES */}
-      <div>
-        <h2 style={{ color: "#0f172a" }}>🔗 Enlaces de interés</h2>
+      <div style={{ marginTop: 40 }}>
+        <h2>🔗 Enlaces de interés</h2>
 
         <p>
-          <a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank" style={{ color: "#1d4ed8" }}>
+          <a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank">
             Wikipedia Historia de España
           </a>
         </p>
 
         <p>
-          <a href="https://www.cervantesvirtual.com/" target="_blank" style={{ color: "#1d4ed8" }}>
+          <a href="https://www.cervantesvirtual.com/" target="_blank">
             Biblioteca Cervantes
           </a>
         </p>
@@ -305,3 +343,4 @@ export default function App() {
     </div>
   );
 }
+```
