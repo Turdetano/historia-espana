@@ -92,9 +92,11 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    onAuthStateChanged(auth, (u) => setUser(u));
-  }, []);
-
+    auth, (u) => setUser(u));
+ onAuthStateChanged(auth, (u) => {
+  setUser(u);
+  console.log("UID:", u?.uid);
+});
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
