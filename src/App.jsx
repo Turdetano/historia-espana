@@ -25,7 +25,7 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 🎨 BOTONES MEJORADOS
+// BOTONES
 const btnPrimary = {
   background: "#1d4ed8",
   color: "#fff",
@@ -34,8 +34,7 @@ const btnPrimary = {
   border: "none",
   cursor: "pointer",
   marginRight: 10,
-  fontWeight: "bold",
-  fontSize: "14px"
+  fontWeight: "bold"
 };
 
 const btnDanger = {
@@ -45,8 +44,7 @@ const btnDanger = {
   borderRadius: 10,
   border: "none",
   cursor: "pointer",
-  fontWeight: "bold",
-  fontSize: "14px"
+  fontWeight: "bold"
 };
 
 const btnSecondary = {
@@ -56,11 +54,10 @@ const btnSecondary = {
   borderRadius: 10,
   border: "none",
   cursor: "pointer",
-  fontWeight: "bold",
-  fontSize: "14px"
+  fontWeight: "bold"
 };
 
-// 📸 CLOUDINARY
+// CLOUDINARY
 const uploadImage = async (file) => {
   try {
     const formData = new FormData();
@@ -124,7 +121,6 @@ export default function App() {
       }
     }
 
-    // ✏️ EDITAR
     if (editingId) {
       await updateDoc(doc(db, "articles", editingId), {
         title,
@@ -145,7 +141,6 @@ export default function App() {
       return;
     }
 
-    // 🆕 CREAR
     const art = {
       title,
       content,
@@ -159,21 +154,13 @@ export default function App() {
 
     setArticles(prev => [...prev, { ...art, id: ref.id }]);
 
-    // 📢 TELEGRAM
     try {
       await fetch("/api/telegram", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          title,
-          content
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content })
       });
-    } catch (err) {
-      console.error("Error Telegram:", err);
-    }
+    } catch {}
 
     resetForm();
   };
@@ -204,9 +191,16 @@ export default function App() {
   const logout = () => signOut(auth);
 
   return (
-    <div style={{ background: "#f1f5f9", minHeight: "100vh", padding: 20 }}>
+    <div style={{
+      background: "#f1f5f9",
+      minHeight: "100vh",
+      padding: 20,
+      color: "#0f172a" // 🔥 CLAVE
+    }}>
 
-      <h1 style={{ textAlign: "center" }}>📜 Historia de España</h1>
+      <h1 style={{ textAlign: "center", color: "#0f172a" }}>
+        📜 Historia de España
+      </h1>
 
       {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -214,7 +208,6 @@ export default function App() {
           href="https://t.me/Hispania_Imperial"
           target="_blank"
           style={{
-            display: "inline-block",
             background: "#0088cc",
             color: "#fff",
             padding: "12px 20px",
@@ -233,7 +226,7 @@ export default function App() {
         </button>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p>👤 Tartessos</p>
+          <p style={{ color: "#0f172a" }}>👤 Tartessos</p>
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
@@ -246,24 +239,14 @@ export default function App() {
         padding: 20,
         borderRadius: 10,
         maxWidth: 600,
-        margin: "30px auto",
-        boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
+        margin: "30px auto"
       }}>
-        <h2>{editingId ? "✏️ Editando artículo" : "✍️ Crear artículo"}</h2>
+        <h2 style={{ color: "#0f172a" }}>
+          {editingId ? "✏️ Editando artículo" : "✍️ Crear artículo"}
+        </h2>
 
-        <input
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          placeholder="Título"
-          style={{ width: "100%", marginBottom: 10, padding: 10 }}
-        />
-
-        <textarea
-          value={content}
-          onChange={e => setContent(e.target.value)}
-          placeholder="Contenido"
-          style={{ width: "100%", marginBottom: 10, padding: 10 }}
-        />
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", padding: 10 }} />
+        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", padding: 10 }} />
 
         <select value={category} onChange={e => setCategory(e.target.value)}>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -271,94 +254,48 @@ export default function App() {
 
         <br /><br />
 
-        {/* BOTÓN IMAGEN BONITO */}
-        <label style={{
-          background: "#0f172a",
-          color: "#fff",
-          padding: "10px 15px",
-          borderRadius: 8,
-          cursor: "pointer",
-          display: "inline-block"
-        }}>
+        <label style={{ background: "#0f172a", color: "#fff", padding: 10, borderRadius: 6, cursor: "pointer" }}>
           📸 Subir imagen
-          <input
-            type="file"
-            onChange={e => setSelectedImage(e.target.files[0])}
-            style={{ display: "none" }}
-          />
+          <input type="file" onChange={e => setSelectedImage(e.target.files[0])} style={{ display: "none" }} />
         </label>
-
-        {selectedImage && (
-          <img
-            src={URL.createObjectURL(selectedImage)}
-            style={{ width: "100%", marginTop: 10, borderRadius: 6 }}
-          />
-        )}
 
         <br /><br />
 
         <button onClick={publish} style={btnPrimary}>
           {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
         </button>
-
-        {editingId && (
-          <button onClick={resetForm} style={btnSecondary}>
-            Cancelar
-          </button>
-        )}
       </div>
 
-      {/* ARTÍCULOS POR CATEGORÍA */}
+      {/* CATEGORÍAS */}
       {CATEGORIES.map(cat => (
-        <div key={cat} style={{ marginTop: 40 }}>
-          <h2 style={{
-            borderBottom: "3px solid #1d4ed8",
-            paddingBottom: 5
-          }}>
-            📚 {cat}
-          </h2>
+        <div key={cat}>
+          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
 
           {articles.filter(a => a.category === cat).map(a => (
-            <div key={a.id} style={{
-              background: "#fff",
-              padding: 15,
-              marginBottom: 15,
-              borderRadius: 8,
-              boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
-            }}>
+            <div key={a.id} style={{ background: "#fff", padding: 15, marginBottom: 10 }}>
               <h3>{a.title}</h3>
-
-              {a.image && (
-                <img src={a.image} style={{ width: "100%", borderRadius: 6 }} />
-              )}
-
               <p>{a.content}</p>
 
-              <button onClick={() => startEdit(a)} style={btnPrimary}>
-                ✏️ Editar
-              </button>
-
-              <button onClick={() => remove(a.id)} style={btnDanger}>
-                ❌ Eliminar
-              </button>
+              <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
+              <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
             </div>
           ))}
         </div>
       ))}
 
       {/* ENLACES */}
-      <div style={{ marginTop: 50, textAlign: "center" }}>
-        <h2>🔗 Enlaces de interés</h2>
+      <div>
+        <h2 style={{ color: "#0f172a" }}>🔗 Enlaces de interés</h2>
 
         <p>
-          <a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank">
-            📚 Wikipedia Historia de España
+          <a href="https://es.wikipedia.org/wiki/Historia_de_Espa%C3%B1a" target="_blank" style={{ color: "#1d4ed8" }}>
+            Wikipedia Historia de España
           </a>
         </p>
 
         <p>
-          <a href="https://www.cervantesvirtual.com/" target="_blank">
-            🏛 Biblioteca Cervantes
+          <a href="https://www.cervantesvirtual.com/" target="_blank" style={{ color: "#1d4ed8" }}>
+            Biblioteca Cervantes
           </a>
         </p>
       </div>
