@@ -49,6 +49,16 @@ const btnDanger = {
   fontWeight: "bold"
 };
 
+const btnSecondary = {
+  background: "#475569",
+  color: "#fff",
+  padding: "12px 18px",
+  borderRadius: 10,
+  border: "none",
+  cursor: "pointer",
+  fontWeight: "bold"
+};
+
 // CLOUDINARY
 const uploadImage = async (file) => {
   try {
@@ -181,7 +191,7 @@ export default function App() {
   };
 
   const remove = async (id) => {
-    if (!confirm("¿Eliminar este artículo?")) return;
+    if (!confirm("⚠️ ¿Seguro que quieres eliminar este artículo?")) return;
     await deleteDoc(doc(db, "articles", id));
     setArticles(prev => prev.filter(a => a.id !== id));
   };
@@ -210,14 +220,19 @@ export default function App() {
 
       {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <a href="https://t.me/Hispania_Imperial" target="_blank" style={{
-          background: "#0088cc",
-          color: "#fff",
-          padding: "12px 20px",
-          borderRadius: 10,
-          textDecoration: "none",
-          fontWeight: "bold"
-        }}>
+        <a
+          href="https://t.me/Hispania_Imperial"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            background: "#0088cc",
+            color: "#fff",
+            padding: "12px 20px",
+            borderRadius: 10,
+            textDecoration: "none",
+            fontWeight: "bold"
+          }}
+        >
           📢 Canal Hispania Imperial
         </a>
       </div>
@@ -247,7 +262,7 @@ export default function App() {
           boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
         }}>
           <h2 style={{ fontSize: "26px", fontWeight: "900", color: "#000" }}>
-            ✍️ Crear artículo
+            {editingId ? "✏️ Editando artículo" : "✍️ Crear artículo"}
           </h2>
 
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
@@ -269,6 +284,12 @@ export default function App() {
           <button onClick={publish} style={btnPrimary}>
             🚀 Publicar
           </button>
+
+          {editingId && (
+            <button onClick={resetForm} style={btnSecondary}>
+              Cancelar edición
+            </button>
+          )}
         </div>
       )}
 
@@ -312,8 +333,12 @@ export default function App() {
 
                 {user?.uid === ADMIN_UID && (
                   <>
-                    <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
-                    <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
+                    <button onClick={() => startEdit(a)} style={btnPrimary}>
+                      Editar
+                    </button>
+                    <button onClick={() => remove(a.id)} style={btnDanger}>
+                      Eliminar
+                    </button>
                   </>
                 )}
               </div>
@@ -337,11 +362,16 @@ export default function App() {
           { name: "Biblioteca GHY", url: "https://bghyn.com/" }
         ].map(link => (
           <p key={link.name}>
-            <a href={link.url} target="_blank" style={{
-              fontWeight: "900",
-              color: "#0f172a",
-              textDecoration: "none"
-            }}>
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontWeight: "900",
+                color: "#020617",
+                textDecoration: "underline"
+              }}
+            >
               {link.name}
             </a>
           </p>
