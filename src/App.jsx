@@ -277,19 +277,47 @@ export default function App() {
         <div key={cat}>
           <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
 
-          {articles.filter(a => a.category === cat).map(a => (
-            <div key={a.id} style={{ background: "#fff", padding: 15, marginBottom: 10 }}>
-              <h3>{a.title}</h3>
-              <p>{a.content}</p>
+          {articles
+            .filter(a => a.category === cat)
+            .map(a => (
+              <div key={a.id} style={{
+                background: "#fff",
+                padding: 15,
+                marginBottom: 15,
+                borderRadius: 10,
+                boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
+              }}>
 
-              {user?.uid === ADMIN_UID && (
-                <>
-                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
-                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
-                </>
-              )}
-            </div>
-          ))}
+                {a.image && (
+                  <img
+                    src={a.image}
+                    alt={a.title}
+                    style={{
+                      width: "100%",
+                      maxHeight: 300,
+                      objectFit: "cover",
+                      borderRadius: 8,
+                      marginBottom: 10
+                    }}
+                  />
+                )}
+
+                <h3 style={{ fontSize: "20px", fontWeight: "bold" }}>
+                  {a.title}
+                </h3>
+
+                <p style={{ lineHeight: "1.6" }}>
+                  {a.content}
+                </p>
+
+                {user?.uid === ADMIN_UID && (
+                  <>
+                    <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
+                    <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
+                  </>
+                )}
+              </div>
+            ))}
         </div>
       ))}
 
@@ -309,15 +337,11 @@ export default function App() {
           { name: "Biblioteca GHY", url: "https://bghyn.com/" }
         ].map(link => (
           <p key={link.name}>
-            <a
-              href={link.url}
-              target="_blank"
-              style={{
-                fontWeight: "900",
-                color: "#0f172a",
-                textDecoration: "none"
-              }}
-            >
+            <a href={link.url} target="_blank" style={{
+              fontWeight: "900",
+              color: "#0f172a",
+              textDecoration: "none"
+            }}>
               {link.name}
             </a>
           </p>
