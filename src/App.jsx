@@ -201,10 +201,9 @@ export default function App() {
       minHeight: "100vh",
       padding: 20,
       fontFamily: "Segoe UI, Arial",
-      color: "#111" // 🔥 fuerza visibilidad total
+      color: "#111"
     }}>
 
-      {/* TITULO PRINCIPAL */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
@@ -215,7 +214,6 @@ export default function App() {
         📜 Historia de España
       </h1>
 
-      {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <a
           href="https://t.me/Hispania_Imperial"
@@ -246,7 +244,6 @@ export default function App() {
         </div>
       )}
 
-      {/* FORMULARIO */}
       <div style={{
         background: "#fff",
         padding: 20,
@@ -303,8 +300,13 @@ export default function App() {
         <p><a href="https://es.hispanopedia.com/wiki/Inicio" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Hispanopedia</a></p>
         <p><a href="https://www.cervantesvirtual.com/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Biblioteca Cervantes</a></p>
         <p><a href="https://www.rae.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Real Academia Española</a></p>
-        <p><a href="https://pares.culturaydeporte.gob.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Archivos Españoles (PARES)</a></p>
         <p><a href="https://www.bne.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Biblioteca Nacional de España</a></p>
+
+        {/* NUEVOS */}
+        <p><a href="https://www.rah.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Real Academia de la Historia</a></p>
+        <p><a href="https://www.museodelprado.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Museo del Prado</a></p>
+        <p><a href="https://bghyn.com/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Biblioteca GHY</a></p>
+
       </div>
 
     </div>
