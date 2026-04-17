@@ -82,8 +82,9 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
 
   const [user, setUser] = useState(null);
+  const [adminMode, setAdminMode] = useState(false); // 🔐 NUEVO
 
-  // AUTH + UID
+  // AUTH
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -198,30 +199,36 @@ export default function App() {
       color: "#111"
     }}>
 
-      {/* TITULO */}
-      <h1 style={{
-        textAlign: "center",
-        fontSize: "36px",
-        fontWeight: "900",
-        color: "#000"
-      }}>
+      {/* TITULO + ACTIVADOR SECRETO */}
+      <h1
+        style={{
+          textAlign: "center",
+          fontSize: "36px",
+          fontWeight: "900",
+          color: "#000",
+          cursor: "pointer"
+        }}
+        onClick={() => {
+          const pass = prompt("Acceso administrador:");
+          if (pass === "Hispania123") {
+            setAdminMode(true);
+            alert("Modo administrador activado");
+          }
+        }}
+      >
         📜 Historia de España
       </h1>
 
       {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <a
-          href="https://t.me/Hispania_Imperial"
-          target="_blank"
-          style={{
-            background: "#0088cc",
-            color: "#fff",
-            padding: "12px 20px",
-            borderRadius: 10,
-            textDecoration: "none",
-            fontWeight: "bold"
-          }}
-        >
+        <a href="https://t.me/Hispania_Imperial" target="_blank" style={{
+          background: "#0088cc",
+          color: "#fff",
+          padding: "12px 20px",
+          borderRadius: 10,
+          textDecoration: "none",
+          fontWeight: "bold"
+        }}>
           📢 Canal Hispania Imperial
         </a>
       </div>
@@ -240,8 +247,8 @@ export default function App() {
         </div>
       )}
 
-      {/* FORMULARIO SOLO ADMIN */}
-      {user?.uid === ADMIN_UID && (
+      {/* ADMIN */}
+      {user?.uid === ADMIN_UID && adminMode && (
         <div style={{
           background: "#fff",
           padding: 20,
@@ -250,7 +257,9 @@ export default function App() {
           margin: "30px auto",
           boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
         }}>
-          <h2>✍️ Crear artículo</h2>
+          <h2 style={{ fontWeight: "900", fontSize: "26px" }}>
+            ✍️ Crear artículo
+          </h2>
 
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
           <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
@@ -261,13 +270,7 @@ export default function App() {
 
           <br /><br />
 
-          <label style={{
-            background: "#0f172a",
-            color: "#fff",
-            padding: 10,
-            borderRadius: 6,
-            cursor: "pointer"
-          }}>
+          <label style={{ background: "#0f172a", color: "#fff", padding: 10, borderRadius: 6, cursor: "pointer" }}>
             📸 Subir imagen
             <input type="file" onChange={e => setSelectedImage(e.target.files[0])} style={{ display: "none" }} />
           </label>
@@ -290,7 +293,7 @@ export default function App() {
               <h3>{a.title}</h3>
               <p>{a.content}</p>
 
-              {user?.uid === ADMIN_UID && (
+              {user?.uid === ADMIN_UID && adminMode && (
                 <>
                   <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
                   <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
@@ -301,17 +304,37 @@ export default function App() {
         </div>
       ))}
 
-      {/* ENLACES */}
+      {/* ENLACES MEJORADOS */}
       <div style={{ marginTop: 40 }}>
-        <h2 style={{ fontWeight: "900" }}>🔗 Enlaces de interés</h2>
+        <h2 style={{ fontWeight: "900", fontSize: "24px" }}>
+          🔗 Enlaces de interés
+        </h2>
 
-        <p><a href="https://es.hispanopedia.com/wiki/Inicio" target="_blank">Hispanopedia</a></p>
-        <p><a href="https://www.cervantesvirtual.com/" target="_blank">Biblioteca Cervantes</a></p>
-        <p><a href="https://www.rae.es/" target="_blank">Real Academia Española</a></p>
-        <p><a href="https://www.bne.es/" target="_blank">Biblioteca Nacional de España</a></p>
-        <p><a href="https://www.rah.es/" target="_blank">Real Academia de la Historia</a></p>
-        <p><a href="https://www.museodelprado.es/" target="_blank">Museo del Prado</a></p>
-        <p><a href="https://bghyn.com/" target="_blank">Biblioteca GHY</a></p>
+        {[
+          { name: "Hispanopedia", url: "https://es.hispanopedia.com/wiki/Inicio" },
+          { name: "Biblioteca Cervantes", url: "https://www.cervantesvirtual.com/" },
+          { name: "Real Academia Española", url: "https://www.rae.es/" },
+          { name: "Biblioteca Nacional de España", url: "https://www.bne.es/" },
+          { name: "Real Academia de la Historia", url: "https://www.rah.es/" },
+          { name: "Museo del Prado", url: "https://www.museodelprado.es/" },
+          { name: "Biblioteca GHY", url: "https://bghyn.com/" }
+        ].map(link => (
+          <p key={link.name}>
+            <a
+              href={link.url}
+              target="_blank"
+              style={{
+                fontWeight: "800",
+                color: "#0f172a",
+                textDecoration: "none"
+              }}
+              onMouseOver={e => e.target.style.color = "#1d4ed8"}
+              onMouseOut={e => e.target.style.color = "#0f172a"}
+            >
+              {link.name}
+            </a>
+          </p>
+        ))}
       </div>
 
     </div>
