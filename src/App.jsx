@@ -82,7 +82,6 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
 
   const [user, setUser] = useState(null);
-  const [adminMode, setAdminMode] = useState(false); // 🔐 NUEVO
 
   // AUTH
   useEffect(() => {
@@ -199,23 +198,13 @@ export default function App() {
       color: "#111"
     }}>
 
-      {/* TITULO + ACTIVADOR SECRETO */}
-      <h1
-        style={{
-          textAlign: "center",
-          fontSize: "36px",
-          fontWeight: "900",
-          color: "#000",
-          cursor: "pointer"
-        }}
-        onClick={() => {
-          const pass = prompt("Acceso administrador:");
-          if (pass === "Hispania123") {
-            setAdminMode(true);
-            alert("Modo administrador activado");
-          }
-        }}
-      >
+      {/* TITULO */}
+      <h1 style={{
+        textAlign: "center",
+        fontSize: "36px",
+        fontWeight: "900",
+        color: "#000"
+      }}>
         📜 Historia de España
       </h1>
 
@@ -247,8 +236,8 @@ export default function App() {
         </div>
       )}
 
-      {/* ADMIN */}
-      {user?.uid === ADMIN_UID && adminMode && (
+      {/* FORMULARIO ADMIN */}
+      {user?.uid === ADMIN_UID && (
         <div style={{
           background: "#fff",
           padding: 20,
@@ -257,7 +246,7 @@ export default function App() {
           margin: "30px auto",
           boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
         }}>
-          <h2 style={{ fontWeight: "900", fontSize: "26px" }}>
+          <h2 style={{ fontSize: "26px", fontWeight: "900", color: "#000" }}>
             ✍️ Crear artículo
           </h2>
 
@@ -293,7 +282,7 @@ export default function App() {
               <h3>{a.title}</h3>
               <p>{a.content}</p>
 
-              {user?.uid === ADMIN_UID && adminMode && (
+              {user?.uid === ADMIN_UID && (
                 <>
                   <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
                   <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
@@ -304,9 +293,9 @@ export default function App() {
         </div>
       ))}
 
-      {/* ENLACES MEJORADOS */}
+      {/* ENLACES */}
       <div style={{ marginTop: 40 }}>
-        <h2 style={{ fontWeight: "900", fontSize: "24px" }}>
+        <h2 style={{ fontWeight: "900", fontSize: "24px", color: "#000" }}>
           🔗 Enlaces de interés
         </h2>
 
@@ -324,12 +313,10 @@ export default function App() {
               href={link.url}
               target="_blank"
               style={{
-                fontWeight: "800",
+                fontWeight: "900",
                 color: "#0f172a",
                 textDecoration: "none"
               }}
-              onMouseOver={e => e.target.style.color = "#1d4ed8"}
-              onMouseOut={e => e.target.style.color = "#0f172a"}
             >
               {link.name}
             </a>
