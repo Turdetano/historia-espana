@@ -17,6 +17,8 @@ import { useState, useEffect } from "react";
 
 const provider = new GoogleAuthProvider();
 
+const ADMIN_UID = "PVBWPZUwVwZnwAnaA5F0a6UuqF83";
+
 const CATEGORIES = [
   "Edad Antigua",
   "Edad Media",
@@ -39,16 +41,6 @@ const btnPrimary = {
 
 const btnDanger = {
   background: "#b91c1c",
-  color: "#fff",
-  padding: "12px 18px",
-  borderRadius: 10,
-  border: "none",
-  cursor: "pointer",
-  fontWeight: "bold"
-};
-
-const btnSecondary = {
-  background: "#475569",
   color: "#fff",
   padding: "12px 18px",
   borderRadius: 10,
@@ -91,6 +83,7 @@ export default function App() {
 
   const [user, setUser] = useState(null);
 
+  // AUTH + UID
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -100,6 +93,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // CARGAR ARTÍCULOS
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -204,16 +198,17 @@ export default function App() {
       color: "#111"
     }}>
 
+      {/* TITULO */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
         fontWeight: "900",
-        color: "#000",
-        textShadow: "1px 1px 2px rgba(0,0,0,0.2)"
+        color: "#000"
       }}>
         📜 Historia de España
       </h1>
 
+      {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <a
           href="https://t.me/Hispania_Imperial"
@@ -231,82 +226,92 @@ export default function App() {
         </a>
       </div>
 
+      {/* LOGIN */}
       {!user ? (
         <button onClick={login} style={btnPrimary}>
           Iniciar sesión
         </button>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p style={{ fontWeight: "bold", fontSize: "18px" }}>👤 Tartessos</p>
+          <p>👤 Tartessos</p>
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
         </div>
       )}
 
-      <div style={{
-        background: "#fff",
-        padding: 20,
-        borderRadius: 10,
-        maxWidth: 600,
-        margin: "30px auto",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
-      }}>
-        <h2 style={{
-          fontSize: "26px",
-          fontWeight: "900",
-          color: "#000"
+      {/* FORMULARIO SOLO ADMIN */}
+      {user?.uid === ADMIN_UID && (
+        <div style={{
+          background: "#fff",
+          padding: 20,
+          borderRadius: 10,
+          maxWidth: 600,
+          margin: "30px auto",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
         }}>
-          ✍️ Crear artículo
-        </h2>
+          <h2>✍️ Crear artículo</h2>
 
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
-        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
+          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
 
-        <select value={category} onChange={e => setCategory(e.target.value)}>
-          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-        </select>
+          <select value={category} onChange={e => setCategory(e.target.value)}>
+            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          </select>
 
-        <br /><br />
+          <br /><br />
 
-        <label style={{
-          background: "#0f172a",
-          color: "#fff",
-          padding: 10,
-          borderRadius: 6,
-          cursor: "pointer"
-        }}>
-          📸 Subir imagen
-          <input type="file" onChange={e => setSelectedImage(e.target.files[0])} style={{ display: "none" }} />
-        </label>
+          <label style={{
+            background: "#0f172a",
+            color: "#fff",
+            padding: 10,
+            borderRadius: 6,
+            cursor: "pointer"
+          }}>
+            📸 Subir imagen
+            <input type="file" onChange={e => setSelectedImage(e.target.files[0])} style={{ display: "none" }} />
+          </label>
 
-        <br /><br />
+          <br /><br />
 
-        <button onClick={publish} style={btnPrimary}>
-          🚀 Publicar
-        </button>
-      </div>
+          <button onClick={publish} style={btnPrimary}>
+            🚀 Publicar
+          </button>
+        </div>
+      )}
+
+      {/* ARTÍCULOS */}
+      {CATEGORIES.map(cat => (
+        <div key={cat}>
+          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
+
+          {articles.filter(a => a.category === cat).map(a => (
+            <div key={a.id} style={{ background: "#fff", padding: 15, marginBottom: 10 }}>
+              <h3>{a.title}</h3>
+              <p>{a.content}</p>
+
+              {user?.uid === ADMIN_UID && (
+                <>
+                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
+                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
 
       {/* ENLACES */}
       <div style={{ marginTop: 40 }}>
-        <h2 style={{
-          fontSize: "24px",
-          fontWeight: "900",
-          color: "#000"
-        }}>
-          🔗 Enlaces de interés
-        </h2>
+        <h2 style={{ fontWeight: "900" }}>🔗 Enlaces de interés</h2>
 
-        <p><a href="https://es.hispanopedia.com/wiki/Inicio" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Hispanopedia</a></p>
-        <p><a href="https://www.cervantesvirtual.com/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Biblioteca Cervantes</a></p>
-        <p><a href="https://www.rae.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Real Academia Española</a></p>
-        <p><a href="https://www.bne.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Biblioteca Nacional de España</a></p>
-
-        {/* NUEVOS */}
-        <p><a href="https://www.rah.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Real Academia de la Historia</a></p>
-        <p><a href="https://www.museodelprado.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Museo del Prado</a></p>
-        <p><a href="https://bghyn.com/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Biblioteca GHY</a></p>
-
+        <p><a href="https://es.hispanopedia.com/wiki/Inicio" target="_blank">Hispanopedia</a></p>
+        <p><a href="https://www.cervantesvirtual.com/" target="_blank">Biblioteca Cervantes</a></p>
+        <p><a href="https://www.rae.es/" target="_blank">Real Academia Española</a></p>
+        <p><a href="https://www.bne.es/" target="_blank">Biblioteca Nacional de España</a></p>
+        <p><a href="https://www.rah.es/" target="_blank">Real Academia de la Historia</a></p>
+        <p><a href="https://www.museodelprado.es/" target="_blank">Museo del Prado</a></p>
+        <p><a href="https://bghyn.com/" target="_blank">Biblioteca GHY</a></p>
       </div>
 
     </div>
