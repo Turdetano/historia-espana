@@ -17,6 +17,7 @@ import { useState, useEffect } from "react";
 
 const provider = new GoogleAuthProvider();
 
+// 🔐 ADMIN BASE (seguridad actual intacta)
 const ADMINS = ["PVBWPZUwVwZnwAnaA5F0a6UuqF83"];
 
 const CATEGORIES = [
@@ -60,6 +61,7 @@ const btnSecondary = {
   marginRight: 10
 };
 
+// CLOUDINARY
 const uploadImage = async (file) => {
   try {
     const formData = new FormData();
@@ -92,10 +94,16 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
 
   const [user, setUser] = useState(null);
-  const [adminMode, setAdminMode] = useState(false); // 🔥 NUEVO
+  const [adminMode, setAdminMode] = useState(false);
 
+  // 🔥 NUEVO (base admins futura)
+  const [admins, setAdmins] = useState([]);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+
+  // 🔐 Seguridad ACTUAL (no se rompe)
   const isAdmin = user && ADMINS.includes(user.uid);
 
+  // AUTH
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -103,9 +111,17 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // CARGAR ARTÍCULOS
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+  }, []);
+
+  // 🔥 CARGAR ADMINS (futuro)
+  useEffect(() => {
+    getDocs(collection(db, "admins")).then(s =>
+      setAdmins(s.docs.map(d => d.id))
     );
   }, []);
 
@@ -179,7 +195,7 @@ export default function App() {
     setContent(a.content);
     setCategory(a.category);
     setEditingId(a.id);
-    setAdminMode(true); // 🔥 fuerza abrir panel
+    setAdminMode(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -189,7 +205,24 @@ export default function App() {
     setArticles(prev => prev.filter(a => a.id !== id));
   };
 
+  // 🔥 añadir admin (base)
+  const addAdmin = async () => {
+    if (!newAdminEmail) return alert("Introduce email");
+
+    try {
+      await addDoc(collection(db, "admins"), {
+        email: newAdminEmail
+      });
+
+      alert("Admin añadido (fase inicial)");
+      setNewAdminEmail("");
+    } catch {
+      alert("Error al añadir admin");
+    }
+  };
+
   const login = () => signInWithPopup(auth, provider);
+
   const logout = () => {
     setAdminMode(false);
     signOut(auth);
@@ -204,6 +237,7 @@ export default function App() {
       color: "#111"
     }}>
 
+      {/* TITULO */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
@@ -213,6 +247,7 @@ export default function App() {
         📜 Historia de España
       </h1>
 
+      {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <a href="https://t.me/Hispania_Imperial" target="_blank" style={{
           background: "#0088cc",
@@ -226,6 +261,7 @@ export default function App() {
         </a>
       </div>
 
+      {/* LOGIN */}
       {!user ? (
         <button onClick={login} style={btnPrimary}>
           Iniciar sesión
@@ -235,10 +271,7 @@ export default function App() {
           <p>👤 {user.displayName}</p>
 
           {isAdmin && (
-            <button
-              onClick={() => setAdminMode(!adminMode)}
-              style={btnSecondary}
-            >
+            <button onClick={() => setAdminMode(!adminMode)} style={btnSecondary}>
               {adminMode ? "Cerrar panel admin" : "Abrir panel admin"}
             </button>
           )}
@@ -249,7 +282,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 🔥 PANEL SOLO SI ACTIVADO */}
+      {/* PANEL ADMIN */}
       {isAdmin && adminMode && (
         <div style={{
           background: "#fff",
@@ -259,7 +292,15 @@ export default function App() {
           margin: "30px auto",
           boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
         }}>
-          <h2 style={{ fontSize: "26px", fontWeight: "900" }}>
+          <h2 style={{
+            fontSize: "26px",
+            fontWeight: "900",
+            color: "#000",
+            background: "#e2e8f0",
+            padding: "10px",
+            borderRadius: "8px",
+            marginBottom: "15px"
+          }}>
             ✍️ Panel de administración
           </h2>
 
@@ -286,18 +327,34 @@ export default function App() {
           <button onClick={() => publish("draft")} style={btnSecondary}>
             💾 Borrador
           </button>
+
+          {/* GESTIÓN ADMIN */}
+          <div style={{ marginTop: 30 }}>
+            <h3 style={{ fontWeight: "bold", color: "#000" }}>
+              👑 Gestión de administradores
+            </h3>
+
+            <input
+              value={newAdminEmail}
+              onChange={e => setNewAdminEmail(e.target.value)}
+              placeholder="Email del nuevo admin"
+              style={{ width: "100%", padding: 10, marginBottom: 10 }}
+            />
+
+            <button onClick={addAdmin} style={btnSecondary}>
+              ➕ Añadir administrador
+            </button>
+          </div>
         </div>
       )}
 
+      {/* ARTÍCULOS */}
       {CATEGORIES.map(cat => (
         <div key={cat}>
           <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
 
           {articles
-            .filter(a =>
-              a.category === cat &&
-              (a.status === "published" || isAdmin)
-            )
+            .filter(a => a.category === cat)
             .map(a => (
               <div key={a.id} style={{
                 background: "#fff",
@@ -306,7 +363,6 @@ export default function App() {
                 borderRadius: 10,
                 boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
               }}>
-
                 {a.image && (
                   <img src={a.image} alt={a.title} style={{
                     width: "100%",
@@ -320,12 +376,6 @@ export default function App() {
                 <h3>{a.title}</h3>
                 <p>{a.content}</p>
 
-                {isAdmin && a.status === "draft" && (
-                  <p style={{ color: "orange", fontWeight: "bold" }}>
-                    📝 BORRADOR
-                  </p>
-                )}
-
                 {isAdmin && adminMode && (
                   <>
                     <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
@@ -337,7 +387,7 @@ export default function App() {
         </div>
       ))}
 
-      {/* ENLACES intactos */}
+      {/* ENLACES */}
       <div style={{ marginTop: 40 }}>
         <h2 style={{ fontWeight: "900", fontSize: "24px", color: "#000" }}>
           🔗 Enlaces de interés
