@@ -83,30 +83,38 @@ export default function App() {
 
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [loadingRole, setLoadingRole] = useState(true); // 🔥 NUEVO
 
-  // 🔐 AUTH + ROLES DINÁMICOS
+  // 🔐 AUTH + ROLES
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
 
       if (u) {
-        const ref = doc(db, "roles", u.uid);
-        const snap = await getDoc(ref);
+        try {
+          const ref = doc(db, "roles", u.uid);
+          const snap = await getDoc(ref);
 
-        if (snap.exists()) {
-          setRole(snap.data().role);
-        } else {
+          if (snap.exists()) {
+            setRole(snap.data().role);
+          } else {
+            setRole("viewer");
+          }
+        } catch (err) {
+          console.error(err);
           setRole("viewer");
         }
       } else {
         setRole(null);
       }
+
+      setLoadingRole(false); // 🔥 IMPORTANTE
     });
 
     return () => unsubscribe();
   }, []);
 
-  // 📚 CARGAR ARTÍCULOS
+  // 📚 ARTÍCULOS
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -193,7 +201,6 @@ export default function App() {
   const login = () => signInWithPopup(auth, provider);
   const logout = () => signOut(auth);
 
-  // ➕ ADMIN DINÁMICO
   const makeAdmin = async () => {
     const uid = prompt("UID del nuevo admin:");
     if (!uid) return;
@@ -201,6 +208,11 @@ export default function App() {
     await setDoc(doc(db, "roles", uid), { role: "admin" });
     alert("✅ Administrador añadido");
   };
+
+  // ⛔ BLOQUEA RENDER HASTA SABER EL ROL
+  if (loadingRole) {
+    return <p style={{ textAlign: "center" }}>Cargando...</p>;
+  }
 
   return (
     <div style={{
@@ -211,7 +223,6 @@ export default function App() {
       color: "#111"
     }}>
 
-      {/* TITULO */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
@@ -221,7 +232,6 @@ export default function App() {
         📜 Historia de España
       </h1>
 
-      {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <a href="https://t.me/Hispania_Imperial" target="_blank" style={{
           background: "#0088cc",
@@ -235,7 +245,6 @@ export default function App() {
         </a>
       </div>
 
-      {/* LOGIN */}
       {!user ? (
         <button onClick={login} style={btnPrimary}>
           Iniciar sesión
@@ -249,7 +258,6 @@ export default function App() {
         </div>
       )}
 
-      {/* PANEL ADMIN */}
       {role === "admin" && (
         <div style={{ textAlign: "center", marginTop: 10 }}>
           <button onClick={makeAdmin} style={btnPrimary}>
@@ -258,7 +266,6 @@ export default function App() {
         </div>
       )}
 
-      {/* FORMULARIO */}
       {(role === "admin" || role === "editor") && (
         <div style={{
           background: "#fff",
@@ -268,7 +275,7 @@ export default function App() {
           margin: "30px auto",
           boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
         }}>
-          <h2 style={{ fontSize: "26px", fontWeight: "900", color: "#000" }}>
+          <h2 style={{ fontSize: "26px", fontWeight: "900" }}>
             ✍️ Crear artículo
           </h2>
 
@@ -287,35 +294,8 @@ export default function App() {
         </div>
       )}
 
-      {/* ARTÍCULOS */}
-      {CATEGORIES.map(cat => (
-        <div key={cat}>
-          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
-
-          {articles.filter(a => a.category === cat).map(a => (
-            <div key={a.id} style={{
-              background: "#fff",
-              padding: 15,
-              marginBottom: 15,
-              borderRadius: 10
-            }}>
-              <h3>{a.title}</h3>
-              <p>{a.content}</p>
-
-              {role === "admin" && (
-                <>
-                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
-                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      ))}
-
-      {/* ENLACES COMPLETOS */}
       <div style={{ marginTop: 40 }}>
-        <h2 style={{ fontWeight: "900", fontSize: "24px", color: "#000" }}>
+        <h2 style={{ fontWeight: "900", fontSize: "24px" }}>
           🔗 Enlaces de interés
         </h2>
 
@@ -329,15 +309,10 @@ export default function App() {
           { name: "Biblioteca GHY", url: "https://bghyn.com/" }
         ].map(link => (
           <p key={link.name}>
-            <a
-              href={link.url}
-              target="_blank"
-              style={{
-                fontWeight: "900",
-                color: "#0f172a",
-                textDecoration: "none"
-              }}
-            >
+            <a href={link.url} target="_blank" style={{
+              fontWeight: "900",
+              color: "#0f172a"
+            }}>
               {link.name}
             </a>
           </p>
