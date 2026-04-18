@@ -5,7 +5,9 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  updateDoc
+  updateDoc,
+  getDoc,
+  setDoc
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -16,9 +18,6 @@ import {
 import { useState, useEffect } from "react";
 
 const provider = new GoogleAuthProvider();
-
-// 🔐 ADMIN BASE (seguridad actual intacta)
-const ADMINS = ["PVBWPZUwVwZnwAnaA5F0a6UuqF83"];
 
 const CATEGORIES = [
   "Edad Antigua",
@@ -48,17 +47,6 @@ const btnDanger = {
   border: "none",
   cursor: "pointer",
   fontWeight: "bold"
-};
-
-const btnSecondary = {
-  background: "#475569",
-  color: "#fff",
-  padding: "12px 18px",
-  borderRadius: 10,
-  border: "none",
-  cursor: "pointer",
-  fontWeight: "bold",
-  marginRight: 10
 };
 
 // CLOUDINARY
@@ -94,38 +82,38 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
 
   const [user, setUser] = useState(null);
-  const [adminMode, setAdminMode] = useState(false);
+  const [role, setRole] = useState(null);
 
-  // 🔥 NUEVO (base admins futura)
-  const [admins, setAdmins] = useState([]);
-  const [newAdminEmail, setNewAdminEmail] = useState("");
-
-  // 🔐 Seguridad ACTUAL (no se rompe)
-  const isAdmin = user && ADMINS.includes(user.uid);
-
-  // AUTH
+  // 🔐 AUTH + ROLES DINÁMICOS
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+
+      if (u) {
+        const ref = doc(db, "roles", u.uid);
+        const snap = await getDoc(ref);
+
+        if (snap.exists()) {
+          setRole(snap.data().role);
+        } else {
+          setRole("viewer");
+        }
+      } else {
+        setRole(null);
+      }
     });
+
     return () => unsubscribe();
   }, []);
 
-  // CARGAR ARTÍCULOS
+  // 📚 CARGAR ARTÍCULOS
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
     );
   }, []);
 
-  // 🔥 CARGAR ADMINS (futuro)
-  useEffect(() => {
-    getDocs(collection(db, "admins")).then(s =>
-      setAdmins(s.docs.map(d => d.id))
-    );
-  }, []);
-
-  const publish = async (status = "published") => {
+  const publish = async () => {
     if (loading) return;
 
     if (!title || !content) {
@@ -150,14 +138,13 @@ export default function App() {
         title,
         content,
         category,
-        status,
         ...(imageUrl && { image: imageUrl })
       });
 
       setArticles(prev =>
         prev.map(a =>
           a.id === editingId
-            ? { ...a, title, content, category, status, ...(imageUrl && { image: imageUrl }) }
+            ? { ...a, title, content, category, ...(imageUrl && { image: imageUrl }) }
             : a
         )
       );
@@ -171,9 +158,8 @@ export default function App() {
       content,
       category,
       image: imageUrl,
-      status,
       date: new Date().toLocaleDateString(),
-      author: user?.displayName || "Anónimo"
+      author: user?.email || "Anónimo"
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
@@ -195,7 +181,6 @@ export default function App() {
     setContent(a.content);
     setCategory(a.category);
     setEditingId(a.id);
-    setAdminMode(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -205,27 +190,16 @@ export default function App() {
     setArticles(prev => prev.filter(a => a.id !== id));
   };
 
-  // 🔥 añadir admin (base)
-  const addAdmin = async () => {
-    if (!newAdminEmail) return alert("Introduce email");
-
-    try {
-      await addDoc(collection(db, "admins"), {
-        email: newAdminEmail
-      });
-
-      alert("Admin añadido (fase inicial)");
-      setNewAdminEmail("");
-    } catch {
-      alert("Error al añadir admin");
-    }
-  };
-
   const login = () => signInWithPopup(auth, provider);
+  const logout = () => signOut(auth);
 
-  const logout = () => {
-    setAdminMode(false);
-    signOut(auth);
+  // ➕ ADMIN DINÁMICO
+  const makeAdmin = async () => {
+    const uid = prompt("UID del nuevo admin:");
+    if (!uid) return;
+
+    await setDoc(doc(db, "roles", uid), { role: "admin" });
+    alert("✅ Administrador añadido");
   };
 
   return (
@@ -268,14 +242,7 @@ export default function App() {
         </button>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p>👤 {user.displayName}</p>
-
-          {isAdmin && (
-            <button onClick={() => setAdminMode(!adminMode)} style={btnSecondary}>
-              {adminMode ? "Cerrar panel admin" : "Abrir panel admin"}
-            </button>
-          )}
-
+          <p>👤 {user.email}</p>
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
@@ -283,7 +250,16 @@ export default function App() {
       )}
 
       {/* PANEL ADMIN */}
-      {isAdmin && adminMode && (
+      {role === "admin" && (
+        <div style={{ textAlign: "center", marginTop: 10 }}>
+          <button onClick={makeAdmin} style={btnPrimary}>
+            ➕ Añadir Administrador
+          </button>
+        </div>
+      )}
+
+      {/* FORMULARIO */}
+      {(role === "admin" || role === "editor") && (
         <div style={{
           background: "#fff",
           padding: 20,
@@ -292,16 +268,8 @@ export default function App() {
           margin: "30px auto",
           boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
         }}>
-          <h2 style={{
-            fontSize: "26px",
-            fontWeight: "900",
-            color: "#000",
-            background: "#e2e8f0",
-            padding: "10px",
-            borderRadius: "8px",
-            marginBottom: "15px"
-          }}>
-            ✍️ Panel de administración
+          <h2 style={{ fontSize: "26px", fontWeight: "900", color: "#000" }}>
+            ✍️ Crear artículo
           </h2>
 
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
@@ -313,38 +281,9 @@ export default function App() {
 
           <br /><br />
 
-          <label style={{ background: "#0f172a", color: "#fff", padding: 10, borderRadius: 6, cursor: "pointer" }}>
-            📸 Subir imagen
-            <input type="file" onChange={e => setSelectedImage(e.target.files[0])} style={{ display: "none" }} />
-          </label>
-
-          <br /><br />
-
-          <button onClick={() => publish("published")} style={btnPrimary}>
+          <button onClick={publish} style={btnPrimary}>
             🚀 Publicar
           </button>
-
-          <button onClick={() => publish("draft")} style={btnSecondary}>
-            💾 Borrador
-          </button>
-
-          {/* GESTIÓN ADMIN */}
-          <div style={{ marginTop: 30 }}>
-            <h3 style={{ fontWeight: "bold", color: "#000" }}>
-              👑 Gestión de administradores
-            </h3>
-
-            <input
-              value={newAdminEmail}
-              onChange={e => setNewAdminEmail(e.target.value)}
-              placeholder="Email del nuevo admin"
-              style={{ width: "100%", padding: 10, marginBottom: 10 }}
-            />
-
-            <button onClick={addAdmin} style={btnSecondary}>
-              ➕ Añadir administrador
-            </button>
-          </div>
         </div>
       )}
 
@@ -353,41 +292,28 @@ export default function App() {
         <div key={cat}>
           <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
 
-          {articles
-            .filter(a => a.category === cat)
-            .map(a => (
-              <div key={a.id} style={{
-                background: "#fff",
-                padding: 15,
-                marginBottom: 15,
-                borderRadius: 10,
-                boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
-              }}>
-                {a.image && (
-                  <img src={a.image} alt={a.title} style={{
-                    width: "100%",
-                    maxHeight: 300,
-                    objectFit: "cover",
-                    borderRadius: 8,
-                    marginBottom: 10
-                  }} />
-                )}
+          {articles.filter(a => a.category === cat).map(a => (
+            <div key={a.id} style={{
+              background: "#fff",
+              padding: 15,
+              marginBottom: 15,
+              borderRadius: 10
+            }}>
+              <h3>{a.title}</h3>
+              <p>{a.content}</p>
 
-                <h3>{a.title}</h3>
-                <p>{a.content}</p>
-
-                {isAdmin && adminMode && (
-                  <>
-                    <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
-                    <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
-                  </>
-                )}
-              </div>
-            ))}
+              {role === "admin" && (
+                <>
+                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
+                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
+                </>
+              )}
+            </div>
+          ))}
         </div>
       ))}
 
-      {/* ENLACES */}
+      {/* ENLACES COMPLETOS */}
       <div style={{ marginTop: 40 }}>
         <h2 style={{ fontWeight: "900", fontSize: "24px", color: "#000" }}>
           🔗 Enlaces de interés
@@ -403,11 +329,15 @@ export default function App() {
           { name: "Biblioteca GHY", url: "https://bghyn.com/" }
         ].map(link => (
           <p key={link.name}>
-            <a href={link.url} target="_blank" style={{
-              fontWeight: "900",
-              color: "#0f172a",
-              textDecoration: "none"
-            }}>
+            <a
+              href={link.url}
+              target="_blank"
+              style={{
+                fontWeight: "900",
+                color: "#0f172a",
+                textDecoration: "none"
+              }}
+            >
               {link.name}
             </a>
           </p>
