@@ -27,6 +27,7 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
+// BOTONES (igual que tenías)
 const btnPrimary = {
   background: "#1d4ed8",
   color: "#fff",
@@ -59,6 +60,7 @@ const btnSecondary = {
   marginRight: 10
 };
 
+// CLOUDINARY
 const uploadImage = async (file) => {
   try {
     const formData = new FormData();
@@ -94,21 +96,23 @@ export default function App() {
 
   const isAdmin = user && ADMINS.includes(user.uid);
 
+  // AUTH
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      console.log("UID:", u?.uid);
     });
     return () => unsubscribe();
   }, []);
 
+  // CARGAR
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
     );
   }, []);
 
-  const saveArticle = async (status = "published") => {
+  // 🔥 NUEVO: soporta draft SIN romper nada
+  const publish = async (status = "published") => {
     if (loading) return;
 
     if (!title || !content) {
@@ -191,27 +195,68 @@ export default function App() {
   const logout = () => signOut(auth);
 
   return (
-    <div style={{ background: "#f1f5f9", minHeight: "100vh", padding: 20 }}>
+    <div style={{
+      background: "#f1f5f9",
+      minHeight: "100vh",
+      padding: 20,
+      fontFamily: "Segoe UI, Arial",
+      color: "#111"
+    }}>
 
-      <h1 style={{ textAlign: "center", fontSize: 36, fontWeight: 900 }}>
+      {/* TITULO ORIGINAL */}
+      <h1 style={{
+        textAlign: "center",
+        fontSize: "36px",
+        fontWeight: "900",
+        color: "#000"
+      }}>
         📜 Historia de España
       </h1>
 
+      {/* TELEGRAM */}
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <a href="https://t.me/Hispania_Imperial" target="_blank" style={{
+          background: "#0088cc",
+          color: "#fff",
+          padding: "12px 20px",
+          borderRadius: 10,
+          textDecoration: "none",
+          fontWeight: "bold"
+        }}>
+          📢 Canal Hispania Imperial
+        </a>
+      </div>
+
+      {/* LOGIN */}
       {!user ? (
-        <button onClick={login} style={btnPrimary}>Iniciar sesión</button>
+        <button onClick={login} style={btnPrimary}>
+          Iniciar sesión
+        </button>
       ) : (
         <div style={{ textAlign: "center" }}>
           <p>👤 {user.displayName}</p>
-          <button onClick={logout} style={btnDanger}>Cerrar sesión</button>
+          <button onClick={logout} style={btnDanger}>
+            Cerrar sesión
+          </button>
         </div>
       )}
 
+      {/* FORMULARIO (igual pero con botón extra) */}
       {isAdmin && (
-        <div style={{ background: "#fff", padding: 20, margin: "30px auto", maxWidth: 600 }}>
-          <h2>✍️ Crear artículo</h2>
+        <div style={{
+          background: "#fff",
+          padding: 20,
+          borderRadius: 10,
+          maxWidth: 600,
+          margin: "30px auto",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+        }}>
+          <h2 style={{ fontSize: "26px", fontWeight: "900", color: "#000" }}>
+            ✍️ Crear artículo
+          </h2>
 
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10 }} />
-          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10 }} />
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
+          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
 
           <select value={category} onChange={e => setCategory(e.target.value)}>
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -219,26 +264,27 @@ export default function App() {
 
           <br /><br />
 
-          <label>
-            📸 Imagen
-            <input type="file" onChange={e => setSelectedImage(e.target.files[0])} />
+          <label style={{ background: "#0f172a", color: "#fff", padding: 10, borderRadius: 6, cursor: "pointer" }}>
+            📸 Subir imagen
+            <input type="file" onChange={e => setSelectedImage(e.target.files[0])} style={{ display: "none" }} />
           </label>
 
           <br /><br />
 
-          <button onClick={() => saveArticle("published")} style={btnPrimary}>
+          <button onClick={() => publish("published")} style={btnPrimary}>
             🚀 Publicar
           </button>
 
-          <button onClick={() => saveArticle("draft")} style={btnSecondary}>
-            💾 Guardar borrador
+          <button onClick={() => publish("draft")} style={btnSecondary}>
+            💾 Borrador
           </button>
         </div>
       )}
 
+      {/* ARTÍCULOS (respeta visual y añade draft) */}
       {CATEGORIES.map(cat => (
         <div key={cat}>
-          <h2>📚 {cat}</h2>
+          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
 
           {articles
             .filter(a =>
@@ -246,13 +292,31 @@ export default function App() {
               (a.status === "published" || isAdmin)
             )
             .map(a => (
-              <div key={a.id} style={{ background: "#fff", padding: 15, marginBottom: 10 }}>
+              <div key={a.id} style={{
+                background: "#fff",
+                padding: 15,
+                marginBottom: 15,
+                borderRadius: 10,
+                boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
+              }}>
+
+                {a.image && (
+                  <img src={a.image} alt={a.title} style={{
+                    width: "100%",
+                    maxHeight: 300,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                    marginBottom: 10
+                  }} />
+                )}
 
                 <h3>{a.title}</h3>
                 <p>{a.content}</p>
 
                 {isAdmin && a.status === "draft" && (
-                  <p style={{ color: "orange" }}>📝 BORRADOR</p>
+                  <p style={{ color: "orange", fontWeight: "bold" }}>
+                    📝 BORRADOR
+                  </p>
                 )}
 
                 {isAdmin && (
@@ -265,6 +329,33 @@ export default function App() {
             ))}
         </div>
       ))}
+
+      {/* 🔗 ENLACES RESTAURADOS */}
+      <div style={{ marginTop: 40 }}>
+        <h2 style={{ fontWeight: "900", fontSize: "24px", color: "#000" }}>
+          🔗 Enlaces de interés
+        </h2>
+
+        {[
+          { name: "Hispanopedia", url: "https://es.hispanopedia.com/wiki/Inicio" },
+          { name: "Biblioteca Cervantes", url: "https://www.cervantesvirtual.com/" },
+          { name: "Real Academia Española", url: "https://www.rae.es/" },
+          { name: "Biblioteca Nacional de España", url: "https://www.bne.es/" },
+          { name: "Real Academia de la Historia", url: "https://www.rah.es/" },
+          { name: "Museo del Prado", url: "https://www.museodelprado.es/" },
+          { name: "Biblioteca GHY", url: "https://bghyn.com/" }
+        ].map(link => (
+          <p key={link.name}>
+            <a href={link.url} target="_blank" style={{
+              fontWeight: "900",
+              color: "#0f172a",
+              textDecoration: "none"
+            }}>
+              {link.name}
+            </a>
+          </p>
+        ))}
+      </div>
 
     </div>
   );
