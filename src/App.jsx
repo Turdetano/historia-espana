@@ -19,6 +19,9 @@ import { useState, useEffect } from "react";
 
 const provider = new GoogleAuthProvider();
 
+// 🔥 SUPER ADMIN (NUNCA PIERDES CONTROL)
+const ADMIN_UID = "PVBWPZUwVwZnwAnaA5F0a6UuqF83";
+
 const CATEGORIES = [
   "Edad Antigua",
   "Edad Media",
@@ -83,7 +86,7 @@ export default function App() {
 
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
-  const [loadingRole, setLoadingRole] = useState(true); // 🔥 NUEVO
+  const [loadingRole, setLoadingRole] = useState(true);
 
   // 🔐 AUTH + ROLES
   useEffect(() => {
@@ -95,11 +98,15 @@ export default function App() {
           const ref = doc(db, "roles", u.uid);
           const snap = await getDoc(ref);
 
-          if (snap.exists()) {
+          // 🔥 SUPER ADMIN FORZADO
+          if (u.uid === ADMIN_UID) {
+            setRole("admin");
+          } else if (snap.exists()) {
             setRole(snap.data().role);
           } else {
             setRole("viewer");
           }
+
         } catch (err) {
           console.error(err);
           setRole("viewer");
@@ -108,7 +115,7 @@ export default function App() {
         setRole(null);
       }
 
-      setLoadingRole(false); // 🔥 IMPORTANTE
+      setLoadingRole(false);
     });
 
     return () => unsubscribe();
@@ -209,7 +216,6 @@ export default function App() {
     alert("✅ Administrador añadido");
   };
 
-  // ⛔ BLOQUEA RENDER HASTA SABER EL ROL
   if (loadingRole) {
     return <p style={{ textAlign: "center" }}>Cargando...</p>;
   }
@@ -294,8 +300,38 @@ export default function App() {
         </div>
       )}
 
+      {/* ARTÍCULOS */}
+      {CATEGORIES.map(cat => (
+        <div key={cat}>
+          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
+
+          {articles.filter(a => a.category === cat).map(a => (
+            <div key={a.id} style={{ background: "#fff", padding: 15, marginBottom: 15, borderRadius: 10 }}>
+              <h3>{a.title}</h3>
+              <p>{a.content}</p>
+
+              {(role === "admin" || role === "editor") && (
+                <>
+                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
+                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {/* 🔗 ENLACES */}
       <div style={{ marginTop: 40 }}>
-        <h2 style={{ fontWeight: "900", fontSize: "24px" }}>
+        <h2 style={{
+          fontWeight: "900",
+          fontSize: "26px",
+          color: "#020617",
+          background: "#e2e8f0",
+          padding: "10px",
+          borderRadius: "8px",
+          display: "inline-block"
+        }}>
           🔗 Enlaces de interés
         </h2>
 
