@@ -17,7 +17,8 @@ import { useState, useEffect } from "react";
 
 const provider = new GoogleAuthProvider();
 
-const ADMIN_UID = "PVBWPZUwVwZnwAnaA5F0a6UuqF83";
+// 🔐 MULTI ADMIN
+const ADMINS = ["PVBWPZUwVwZnwAnaA5F0a6UuqF83"];
 
 const CATEGORIES = [
   "Edad Antigua",
@@ -41,16 +42,6 @@ const btnPrimary = {
 
 const btnDanger = {
   background: "#b91c1c",
-  color: "#fff",
-  padding: "12px 18px",
-  borderRadius: 10,
-  border: "none",
-  cursor: "pointer",
-  fontWeight: "bold"
-};
-
-const btnSecondary = {
-  background: "#475569",
   color: "#fff",
   padding: "12px 18px",
   borderRadius: 10,
@@ -92,6 +83,9 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
 
   const [user, setUser] = useState(null);
+
+  // 🔐 comprobar si es admin
+  const isAdmin = user && ADMINS.includes(user.uid);
 
   // AUTH
   useEffect(() => {
@@ -156,7 +150,8 @@ export default function App() {
       category,
       image: imageUrl,
       date: new Date().toLocaleDateString(),
-      author: "Tartessos"
+      author: user?.displayName || "Anónimo",
+      email: user?.email || ""
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
@@ -191,7 +186,7 @@ export default function App() {
   };
 
   const remove = async (id) => {
-    if (!confirm("⚠️ ¿Seguro que quieres eliminar este artículo?")) return;
+    if (!confirm("¿Eliminar este artículo?")) return;
     await deleteDoc(doc(db, "articles", id));
     setArticles(prev => prev.filter(a => a.id !== id));
   };
@@ -208,7 +203,6 @@ export default function App() {
       color: "#111"
     }}>
 
-      {/* TITULO */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
@@ -218,41 +212,33 @@ export default function App() {
         📜 Historia de España
       </h1>
 
-      {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <a
-          href="https://t.me/Hispania_Imperial"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            background: "#0088cc",
-            color: "#fff",
-            padding: "12px 20px",
-            borderRadius: 10,
-            textDecoration: "none",
-            fontWeight: "bold"
-          }}
-        >
+        <a href="https://t.me/Hispania_Imperial" target="_blank" style={{
+          background: "#0088cc",
+          color: "#fff",
+          padding: "12px 20px",
+          borderRadius: 10,
+          textDecoration: "none",
+          fontWeight: "bold"
+        }}>
           📢 Canal Hispania Imperial
         </a>
       </div>
 
-      {/* LOGIN */}
       {!user ? (
         <button onClick={login} style={btnPrimary}>
           Iniciar sesión
         </button>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p>👤 Tartessos</p>
+          <p>👤 {user.displayName}</p>
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
         </div>
       )}
 
-      {/* FORMULARIO ADMIN */}
-      {user?.uid === ADMIN_UID && (
+      {isAdmin && (
         <div style={{
           background: "#fff",
           padding: 20,
@@ -262,7 +248,7 @@ export default function App() {
           boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
         }}>
           <h2 style={{ fontSize: "26px", fontWeight: "900", color: "#000" }}>
-            {editingId ? "✏️ Editando artículo" : "✍️ Crear artículo"}
+            ✍️ Crear artículo
           </h2>
 
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
@@ -284,16 +270,9 @@ export default function App() {
           <button onClick={publish} style={btnPrimary}>
             🚀 Publicar
           </button>
-
-          {editingId && (
-            <button onClick={resetForm} style={btnSecondary}>
-              Cancelar edición
-            </button>
-          )}
         </div>
       )}
 
-      {/* ARTÍCULOS */}
       {CATEGORIES.map(cat => (
         <div key={cat}>
           <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
@@ -310,35 +289,26 @@ export default function App() {
               }}>
 
                 {a.image && (
-                  <img
-                    src={a.image}
-                    alt={a.title}
-                    style={{
-                      width: "100%",
-                      maxHeight: 300,
-                      objectFit: "cover",
-                      borderRadius: 8,
-                      marginBottom: 10
-                    }}
-                  />
+                  <img src={a.image} alt={a.title} style={{
+                    width: "100%",
+                    maxHeight: 300,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                    marginBottom: 10
+                  }} />
                 )}
 
-                <h3 style={{ fontSize: "20px", fontWeight: "bold" }}>
-                  {a.title}
-                </h3>
+                <h3 style={{ fontSize: "20px", fontWeight: "bold" }}>{a.title}</h3>
+                <p>{a.content}</p>
 
-                <p style={{ lineHeight: "1.6" }}>
-                  {a.content}
+                <p style={{ fontSize: "12px", color: "#555" }}>
+                  ✍️ {a.author}
                 </p>
 
-                {user?.uid === ADMIN_UID && (
+                {isAdmin && (
                   <>
-                    <button onClick={() => startEdit(a)} style={btnPrimary}>
-                      Editar
-                    </button>
-                    <button onClick={() => remove(a.id)} style={btnDanger}>
-                      Eliminar
-                    </button>
+                    <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
+                    <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
                   </>
                 )}
               </div>
@@ -346,7 +316,6 @@ export default function App() {
         </div>
       ))}
 
-      {/* ENLACES */}
       <div style={{ marginTop: 40 }}>
         <h2 style={{ fontWeight: "900", fontSize: "24px", color: "#000" }}>
           🔗 Enlaces de interés
@@ -362,16 +331,11 @@ export default function App() {
           { name: "Biblioteca GHY", url: "https://bghyn.com/" }
         ].map(link => (
           <p key={link.name}>
-            <a
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontWeight: "900",
-                color: "#020617",
-                textDecoration: "underline"
-              }}
-            >
+            <a href={link.url} target="_blank" style={{
+              fontWeight: "900",
+              color: "#0f172a",
+              textDecoration: "none"
+            }}>
               {link.name}
             </a>
           </p>
