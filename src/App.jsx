@@ -27,7 +27,7 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// BOTONES (igual que tenías)
+// BOTONES
 const btnPrimary = {
   background: "#1d4ed8",
   color: "#fff",
@@ -60,7 +60,6 @@ const btnSecondary = {
   marginRight: 10
 };
 
-// CLOUDINARY
 const uploadImage = async (file) => {
   try {
     const formData = new FormData();
@@ -93,10 +92,10 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
 
   const [user, setUser] = useState(null);
+  const [adminMode, setAdminMode] = useState(false); // 🔥 NUEVO
 
   const isAdmin = user && ADMINS.includes(user.uid);
 
-  // AUTH
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -104,14 +103,12 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // CARGAR
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
     );
   }, []);
 
-  // 🔥 NUEVO: soporta draft SIN romper nada
   const publish = async (status = "published") => {
     if (loading) return;
 
@@ -182,6 +179,7 @@ export default function App() {
     setContent(a.content);
     setCategory(a.category);
     setEditingId(a.id);
+    setAdminMode(true); // 🔥 fuerza abrir panel
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -192,7 +190,10 @@ export default function App() {
   };
 
   const login = () => signInWithPopup(auth, provider);
-  const logout = () => signOut(auth);
+  const logout = () => {
+    setAdminMode(false);
+    signOut(auth);
+  };
 
   return (
     <div style={{
@@ -203,7 +204,6 @@ export default function App() {
       color: "#111"
     }}>
 
-      {/* TITULO ORIGINAL */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
@@ -213,7 +213,6 @@ export default function App() {
         📜 Historia de España
       </h1>
 
-      {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <a href="https://t.me/Hispania_Imperial" target="_blank" style={{
           background: "#0088cc",
@@ -227,7 +226,6 @@ export default function App() {
         </a>
       </div>
 
-      {/* LOGIN */}
       {!user ? (
         <button onClick={login} style={btnPrimary}>
           Iniciar sesión
@@ -235,14 +233,24 @@ export default function App() {
       ) : (
         <div style={{ textAlign: "center" }}>
           <p>👤 {user.displayName}</p>
+
+          {isAdmin && (
+            <button
+              onClick={() => setAdminMode(!adminMode)}
+              style={btnSecondary}
+            >
+              {adminMode ? "Cerrar panel admin" : "Abrir panel admin"}
+            </button>
+          )}
+
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
         </div>
       )}
 
-      {/* FORMULARIO (igual pero con botón extra) */}
-      {isAdmin && (
+      {/* 🔥 PANEL SOLO SI ACTIVADO */}
+      {isAdmin && adminMode && (
         <div style={{
           background: "#fff",
           padding: 20,
@@ -251,8 +259,8 @@ export default function App() {
           margin: "30px auto",
           boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
         }}>
-          <h2 style={{ fontSize: "26px", fontWeight: "900", color: "#000" }}>
-            ✍️ Crear artículo
+          <h2 style={{ fontSize: "26px", fontWeight: "900" }}>
+            ✍️ Panel de administración
           </h2>
 
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
@@ -281,7 +289,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ARTÍCULOS (respeta visual y añade draft) */}
       {CATEGORIES.map(cat => (
         <div key={cat}>
           <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
@@ -319,7 +326,7 @@ export default function App() {
                   </p>
                 )}
 
-                {isAdmin && (
+                {isAdmin && adminMode && (
                   <>
                     <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
                     <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
@@ -330,7 +337,7 @@ export default function App() {
         </div>
       ))}
 
-      {/* 🔗 ENLACES RESTAURADOS */}
+      {/* ENLACES intactos */}
       <div style={{ marginTop: 40 }}>
         <h2 style={{ fontWeight: "900", fontSize: "24px", color: "#000" }}>
           🔗 Enlaces de interés
