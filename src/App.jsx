@@ -19,7 +19,7 @@ import { useState, useEffect } from "react";
 
 const provider = new GoogleAuthProvider();
 
-// 🔥 SUPER ADMIN (NUNCA PIERDES CONTROL)
+// 🔥 SUPER ADMIN
 const ADMIN_UID = "PVBWPZUwVwZnwAnaA5F0a6UuqF83";
 
 const CATEGORIES = [
@@ -98,7 +98,6 @@ export default function App() {
           const ref = doc(db, "roles", u.uid);
           const snap = await getDoc(ref);
 
-          // 🔥 SUPER ADMIN FORZADO
           if (u.uid === ADMIN_UID) {
             setRole("admin");
           } else if (snap.exists()) {
@@ -106,7 +105,6 @@ export default function App() {
           } else {
             setRole("viewer");
           }
-
         } catch (err) {
           console.error(err);
           setRole("viewer");
@@ -229,6 +227,7 @@ export default function App() {
       color: "#111"
     }}>
 
+      {/* TITULO */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
@@ -238,6 +237,7 @@ export default function App() {
         📜 Historia de España
       </h1>
 
+      {/* TELEGRAM */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <a href="https://t.me/Hispania_Imperial" target="_blank" style={{
           background: "#0088cc",
@@ -251,6 +251,7 @@ export default function App() {
         </a>
       </div>
 
+      {/* LOGIN */}
       {!user ? (
         <button onClick={login} style={btnPrimary}>
           Iniciar sesión
@@ -264,6 +265,7 @@ export default function App() {
         </div>
       )}
 
+      {/* BOTÓN NUEVO ADMIN */}
       {role === "admin" && (
         <div style={{ textAlign: "center", marginTop: 10 }}>
           <button onClick={makeAdmin} style={btnPrimary}>
@@ -272,6 +274,7 @@ export default function App() {
         </div>
       )}
 
+      {/* FORMULARIO ADMIN/EDITOR */}
       {(role === "admin" || role === "editor") && (
         <div style={{
           background: "#fff",
@@ -307,8 +310,9 @@ export default function App() {
 
           {articles.filter(a => a.category === cat).map(a => (
             <div key={a.id} style={{ background: "#fff", padding: 15, marginBottom: 15, borderRadius: 10 }}>
-              <h3>{a.title}</h3>
-              <p>{a.content}</p>
+              {a.image && <img src={a.image} alt={a.title} style={{ width: "100%", borderRadius: 8, marginBottom: 10 }} />}
+              <h3 style={{ fontWeight: "bold" }}>{a.title}</h3>
+              <p style={{ lineHeight: "1.6" }}>{a.content}</p>
 
               {(role === "admin" || role === "editor") && (
                 <>
@@ -321,7 +325,7 @@ export default function App() {
         </div>
       ))}
 
-      {/* 🔗 ENLACES */}
+      {/* ENLACES DE INTERÉS */}
       <div style={{ marginTop: 40 }}>
         <h2 style={{
           fontWeight: "900",
@@ -347,7 +351,8 @@ export default function App() {
           <p key={link.name}>
             <a href={link.url} target="_blank" style={{
               fontWeight: "900",
-              color: "#0f172a"
+              color: "#0f172a",
+              textDecoration: "none"
             }}>
               {link.name}
             </a>
