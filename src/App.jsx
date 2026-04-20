@@ -19,7 +19,6 @@ import { useState, useEffect } from "react";
 
 const provider = new GoogleAuthProvider();
 
-// 🔥 SUPER ADMIN
 const ADMIN_UID = "PVBWPZUwVwZnwAnaA5F0a6UuqF83";
 
 const CATEGORIES = [
@@ -30,7 +29,6 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// BOTONES
 const btnPrimary = {
   background: "#1d4ed8",
   color: "#fff",
@@ -50,6 +48,30 @@ const btnDanger = {
   border: "none",
   cursor: "pointer",
   fontWeight: "bold"
+};
+
+// 📤 TELEGRAM
+const sendToTelegram = async (article) => {
+  try {
+    const res = await fetch("/api/telegram", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(article)
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("✅ Enviado a Telegram");
+    } else {
+      alert("❌ Error al enviar");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("❌ Error conexión");
+  }
 };
 
 // CLOUDINARY
@@ -88,7 +110,6 @@ export default function App() {
   const [role, setRole] = useState(null);
   const [loadingRole, setLoadingRole] = useState(true);
 
-  // 🔐 AUTH + ROLES
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -99,14 +120,13 @@ export default function App() {
           const snap = await getDoc(ref);
 
           if (u.uid === ADMIN_UID) {
-            setRole("admin");
+            setRole("owner");
           } else if (snap.exists()) {
             setRole(snap.data().role);
           } else {
             setRole("viewer");
           }
-        } catch (err) {
-          console.error(err);
+        } catch {
           setRole("viewer");
         }
       } else {
@@ -119,7 +139,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 📚 ARTÍCULOS
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -128,22 +147,14 @@ export default function App() {
 
   const publish = async () => {
     if (loading) return;
-
-    if (!title || !content) {
-      alert("❌ Rellena título y contenido");
-      return;
-    }
+    if (!title || !content) return alert("❌ Rellena todo");
 
     setLoading(true);
 
     let imageUrl = "";
-
     if (selectedImage) {
       imageUrl = await uploadImage(selectedImage);
-      if (!imageUrl) {
-        setLoading(false);
-        return;
-      }
+      if (!imageUrl) return setLoading(false);
     }
 
     if (editingId) {
@@ -172,7 +183,8 @@ export default function App() {
       category,
       image: imageUrl,
       date: new Date().toLocaleDateString(),
-      author: user?.email || "Anónimo"
+      author: user?.email,
+      authorId: user?.uid
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
@@ -197,135 +209,79 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const remove = async (id) => {
-    if (!confirm("¿Eliminar este artículo?")) return;
-    await deleteDoc(doc(db, "articles", id));
-    setArticles(prev => prev.filter(a => a.id !== id));
+  const remove = async (article) => {
+    if (!confirm("¿Eliminar?")) return;
+
+    if (role === "editor" && article.authorId !== user.uid) {
+      return alert("❌ No permitido");
+    }
+
+    await deleteDoc(doc(db, "articles", article.id));
+    setArticles(prev => prev.filter(a => a.id !== article.id));
   };
 
   const login = () => signInWithPopup(auth, provider);
   const logout = () => signOut(auth);
 
-  const makeAdmin = async () => {
-    const uid = prompt("UID del nuevo admin:");
-    if (!uid) return;
-
-    await setDoc(doc(db, "roles", uid), { role: "admin" });
-    alert("✅ Administrador añadido");
-  };
-
-  if (loadingRole) {
-    return <p style={{ textAlign: "center" }}>Cargando...</p>;
-  }
+  if (loadingRole) return <p>Cargando...</p>;
 
   return (
-    <div style={{
-      background: "#f1f5f9",
-      minHeight: "100vh",
-      padding: 20,
-      fontFamily: "Segoe UI, Arial",
-      color: "#111"
-    }}>
+    <div style={{ padding: 20 }}>
 
-      <h1 style={{
-        textAlign: "center",
-        fontSize: "36px",
-        fontWeight: "900",
-        color: "#000"
-      }}>
-        📜 Historia de España
-      </h1>
-
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <a href="https://t.me/Hispania_Imperial" target="_blank" style={{
-          background: "#0088cc",
-          color: "#fff",
-          padding: "12px 20px",
-          borderRadius: 10,
-          textDecoration: "none",
-          fontWeight: "bold"
-        }}>
-          📢 Canal Hispania Imperial
-        </a>
-      </div>
+      <h1 style={{ textAlign: "center" }}>📜 Historia de España</h1>
 
       {!user ? (
-        <button onClick={login} style={btnPrimary}>
-          Iniciar sesión
-        </button>
+        <button onClick={login} style={btnPrimary}>Login</button>
       ) : (
-        <div style={{ textAlign: "center" }}>
-          <p>👤 {user.email}</p>
-          <button onClick={logout} style={btnDanger}>
-            Cerrar sesión
-          </button>
-        </div>
+        <>
+          <p>{user.email}</p>
+          <button onClick={logout} style={btnDanger}>Logout</button>
+        </>
       )}
 
-      {role === "admin" && (
-        <div style={{ textAlign: "center", marginTop: 10 }}>
-          <button onClick={makeAdmin} style={btnPrimary}>
-            ➕ Añadir Administrador
-          </button>
-        </div>
-      )}
-
-      {(role === "admin" || role === "editor") && (
-        <div style={{
-          background: "#fff",
-          padding: 20,
-          borderRadius: 10,
-          maxWidth: 600,
-          margin: "30px auto",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
-        }}>
-          <h2 style={{ fontSize: "26px", fontWeight: "900" }}>
+      {(role === "owner" || role === "admin" || role === "editor") && (
+        <div style={{ background: "#fff", padding: 20, marginTop: 20 }}>
+          <h2 style={{ color: "#1d4ed8" }}>
             ✍️ {editingId ? "Editar artículo" : "Crear artículo"}
           </h2>
 
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
-          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
-
-          <select value={category} onChange={e => setCategory(e.target.value)}>
-            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-          </select>
-
-          <br /><br />
+          <input value={title} onChange={e => setTitle(e.target.value)} />
+          <textarea value={content} onChange={e => setContent(e.target.value)} />
 
           <input type="file" onChange={e => setSelectedImage(e.target.files[0])} />
 
-          <br /><br />
-
           <button onClick={publish} style={btnPrimary}>
-            {editingId ? "💾 Actualizar" : "🚀 Publicar"}
+            {editingId ? "Actualizar" : "Publicar"}
           </button>
         </div>
       )}
 
-      {CATEGORIES.map(cat => (
-        <div key={cat}>
-          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
+      {articles.map(a => (
+        <div key={a.id}>
+          <h3>{a.title}</h3>
+          {a.image && <img src={a.image} style={{ width: "100%" }} />}
+          <p>{a.content}</p>
 
-          {articles.filter(a => a.category === cat).map(a => (
-            <div key={a.id} style={{ background: "#fff", padding: 15, marginBottom: 15, borderRadius: 10 }}>
-              <h3>{a.title}</h3>
-
-              {a.image && (
-                <img src={a.image} alt="" style={{ width: "100%", borderRadius: 10, marginBottom: 10 }} />
-              )}
-
-              <p>{a.content}</p>
-
-              {(role === "admin" || role === "editor") && (
-                <>
-                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
-                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
-                </>
-              )}
-            </div>
-          ))}
+          {(role === "owner" || role === "admin" || (role === "editor" && a.authorId === user?.uid)) && (
+            <>
+              <button onClick={() => startEdit(a)}>Editar</button>
+              <button onClick={() => sendToTelegram(a)}>📤 Telegram</button>
+              <button onClick={() => remove(a)}>Eliminar</button>
+            </>
+          )}
         </div>
       ))}
+
+      {/* 🔗 ENLACES */}
+      <div style={{ marginTop: 40 }}>
+        <h2>🔗 Enlaces de interés</h2>
+
+        <p><a href="https://es.hispanopedia.com/wiki/Inicio" target="_blank">Hispanopedia</a></p>
+        <p><a href="https://www.cervantesvirtual.com/" target="_blank">Biblioteca Cervantes</a></p>
+        <p><a href="https://www.rae.es/" target="_blank">RAE</a></p>
+        <p><a href="https://pares.culturaydeporte.gob.es/" target="_blank">PARES</a></p>
+        <p><a href="https://www.bne.es/" target="_blank">Biblioteca Nacional</a></p>
+      </div>
 
     </div>
   );
