@@ -6,8 +6,7 @@ import {
   deleteDoc,
   doc,
   updateDoc,
-  getDoc,
-  setDoc
+  getDoc
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -39,7 +38,7 @@ export default function App() {
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [editingId, setEditingId] = useState(null);
 
-  // 🔒 PROTECCIÓN
+  // 🔒 SEGURIDAD
   const checkAuth = () => {
     if (!user) {
       alert("🔒 Debes iniciar sesión");
@@ -158,30 +157,55 @@ export default function App() {
   const logout = () => signOut(auth);
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{
+      background: "#f1f5f9",
+      minHeight: "100vh",
+      padding: 20,
+      fontFamily: "Segoe UI, Arial",
+      color: "#111"
+    }}>
 
-      <h1>📜 Historia de España</h1>
+      <h1 style={{
+        textAlign: "center",
+        fontSize: "36px",
+        fontWeight: "900",
+        color: "#000"
+      }}>
+        📜 Historia de España
+      </h1>
 
       {!user ? (
-        <button onClick={login}>Iniciar sesión</button>
+        <button onClick={login}>
+          Iniciar sesión
+        </button>
       ) : (
-        <div>
+        <div style={{ textAlign: "center" }}>
           <p>{user.email}</p>
-          <button onClick={logout}>Cerrar sesión</button>
+          <button onClick={logout}>
+            Cerrar sesión
+          </button>
         </div>
       )}
 
-      {/* FORMULARIO SOLO CON LOGIN */}
+      {/* FORMULARIO */}
       {user && (
-        <div>
+        <div style={{
+          background: "#fff",
+          padding: 20,
+          borderRadius: 10,
+          maxWidth: 600,
+          margin: "30px auto"
+        }}>
           <h2>✍️ Crear artículo</h2>
 
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" />
-          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" />
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10 }} />
+          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10 }} />
 
           <select value={category} onChange={e => setCategory(e.target.value)}>
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
           </select>
+
+          <br /><br />
 
           <button onClick={publish}>
             {editingId ? "Actualizar" : "Publicar"}
@@ -192,12 +216,22 @@ export default function App() {
       {/* ARTÍCULOS */}
       {CATEGORIES.map(cat => (
         <div key={cat}>
-          <h2>📚 {cat}</h2>
+          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
 
           {articles.filter(a => a.category === cat).map(a => (
-            <div key={a.id}>
+            <div key={a.id} style={{
+              background: "#fff",
+              padding: 15,
+              marginBottom: 15,
+              borderRadius: 10
+            }}>
               <h3>{a.title}</h3>
               <p>{a.content}</p>
+
+              {/* 🖼 IMAGEN RESTAURADA */}
+              {a.image && (
+                <img src={a.image} style={{ maxWidth: "100%", marginTop: 10 }} />
+              )}
 
               {user && (
                 <>
@@ -211,8 +245,8 @@ export default function App() {
         </div>
       ))}
 
-      {/* ENLACES (NO TOCADOS) */}
-      <div>
+      {/* ENLACES */}
+      <div style={{ marginTop: 40 }}>
         <h2>🔗 Enlaces de interés</h2>
 
         <p><a href="https://es.hispanopedia.com/wiki/Inicio" target="_blank">Hispanopedia</a></p>
