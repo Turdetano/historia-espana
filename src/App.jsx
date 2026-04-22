@@ -1,3 +1,7 @@
+// ==============================
+// 📦 IMPORTACIONES
+// ==============================
+
 import { db, auth } from "./firebase.js";
 import {
   collection,
@@ -16,9 +20,14 @@ import {
 } from "firebase/auth";
 import { useState, useEffect } from "react";
 
+// ==============================
+// ⚙️ CONFIGURACIÓN GENERAL
+// ==============================
+
 const provider = new GoogleAuthProvider();
 const ADMIN_UID = "PVBWPZUwVwZnwAnaA5F0a6UuqF83";
 
+// 📚 Categorías históricas
 const CATEGORIES = [
   "Edad Antigua",
   "Edad Media",
@@ -27,7 +36,10 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// 🎨 BOTONES RESTAURADOS
+// ==============================
+// 🎨 ESTILOS
+// ==============================
+
 const btnPrimary = {
   background: "#1d4ed8",
   color: "#fff",
@@ -49,7 +61,15 @@ const btnDanger = {
   fontWeight: "bold"
 };
 
+// ==============================
+// 🚀 COMPONENTE PRINCIPAL
+// ==============================
+
 export default function App() {
+
+  // ==============================
+  // 📊 ESTADOS
+  // ==============================
 
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
@@ -59,7 +79,10 @@ export default function App() {
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [editingId, setEditingId] = useState(null);
 
+  // ==============================
   // 🔒 SEGURIDAD
+  // ==============================
+
   const checkAuth = () => {
     if (!user) {
       alert("🔒 Debes iniciar sesión");
@@ -68,7 +91,10 @@ export default function App() {
     return true;
   };
 
-  // 🔐 AUTH
+  // ==============================
+  // 🔐 AUTENTICACIÓN
+  // ==============================
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -76,14 +102,23 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 📚 CARGA
+  const login = () => signInWithPopup(auth, provider);
+  const logout = () => signOut(auth);
+
+  // ==============================
+  // 📚 CARGA DE ARTÍCULOS
+  // ==============================
+
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
     );
   }, []);
 
-  // 🚀 PUBLICAR / EDITAR (FIX GUARDADO)
+  // ==============================
+  // 🚀 PUBLICAR / EDITAR
+  // ==============================
+
   const publish = async () => {
     if (!checkAuth()) return;
 
@@ -92,7 +127,7 @@ export default function App() {
       return;
     }
 
-    // ✏️ EDITAR (ARREGLADO)
+    // ✏️ MODO EDICIÓN
     if (editingId) {
       await updateDoc(doc(db, "articles", editingId), {
         title,
@@ -100,7 +135,6 @@ export default function App() {
         category
       });
 
-      // 🔥 REFRESCO REAL DESDE FIREBASE
       const snapshot = await getDocs(collection(db, "articles"));
       setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
@@ -108,7 +142,7 @@ export default function App() {
       return;
     }
 
-    // 🆕 NUEVO
+    // 🆕 NUEVO ARTÍCULO
     const art = {
       title,
       content,
@@ -125,11 +159,19 @@ export default function App() {
     resetForm();
   };
 
+  // ==============================
+  // 🔄 RESET FORMULARIO
+  // ==============================
+
   const resetForm = () => {
     setTitle("");
     setContent("");
     setEditingId(null);
   };
+
+  // ==============================
+  // ✏️ INICIAR EDICIÓN
+  // ==============================
 
   const startEdit = (a) => {
     if (!checkAuth()) return;
@@ -141,6 +183,10 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ==============================
+  // 🗑 ELIMINAR ARTÍCULO
+  // ==============================
+
   const remove = async (id) => {
     if (!checkAuth()) return;
 
@@ -151,6 +197,10 @@ export default function App() {
     const snapshot = await getDocs(collection(db, "articles"));
     setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
   };
+
+  // ==============================
+  // 📤 ENVIAR A TELEGRAM
+  // ==============================
 
   const sendToTelegram = async (a) => {
     if (!checkAuth()) return;
@@ -168,8 +218,9 @@ export default function App() {
     alert("✅ Enviado");
   };
 
-  const login = () => signInWithPopup(auth, provider);
-  const logout = () => signOut(auth);
+  // ==============================
+  // 🎨 INTERFAZ (RENDER)
+  // ==============================
 
   return (
     <div style={{
@@ -180,7 +231,9 @@ export default function App() {
       color: "#111"
     }}>
 
-      {/* 🔥 TÍTULO */}
+      {/* ==============================
+          🏛️ TÍTULO
+      ============================== */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
@@ -190,7 +243,9 @@ export default function App() {
         📜 Historia de España
       </h1>
 
-      {/* LOGIN */}
+      {/* ==============================
+          🔐 LOGIN / USUARIO
+      ============================== */}
       {!user ? (
         <div style={{ textAlign: "center" }}>
           <button onClick={login} style={btnPrimary}>
@@ -206,7 +261,9 @@ export default function App() {
         </div>
       )}
 
-      {/* ✍️ FORMULARIO */}
+      {/* ==============================
+          ✍️ FORMULARIO
+      ============================== */}
       {user && (
         <div style={{
           background: "#ffffff",
@@ -216,27 +273,10 @@ export default function App() {
           margin: "30px auto",
           boxShadow: "0 6px 18px rgba(0,0,0,0.2)"
         }}>
-          <h2 style={{
-            fontSize: "26px",
-            fontWeight: "900",
-            color: "#020617"
-          }}>
-            ✍️ Crear artículo
-          </h2>
+          <h2>✍️ Crear artículo</h2>
 
-          <input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Título"
-            style={{ width: "100%", marginBottom: 10, padding: 10 }}
-          />
-
-          <textarea
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            placeholder="Contenido"
-            style={{ width: "100%", marginBottom: 10, padding: 10 }}
-          />
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
+          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
 
           <select value={category} onChange={e => setCategory(e.target.value)}>
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -250,7 +290,9 @@ export default function App() {
         </div>
       )}
 
-      {/* 📚 ARTÍCULOS */}
+      {/* ==============================
+          📚 LISTADO DE ARTÍCULOS
+      ============================== */}
       {CATEGORIES.map(cat => (
         <div key={cat}>
           <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
@@ -270,18 +312,20 @@ export default function App() {
               )}
 
               {user && (
-                <>
+                <div style={{ marginTop: 10 }}>
                   <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
                   <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
                   <button onClick={() => sendToTelegram(a)} style={btnPrimary}>Telegram</button>
-                </>
+                </div>
               )}
             </div>
           ))}
         </div>
       ))}
 
-      {/* 🔗 ENLACES MEJORADOS */}
+      {/* ==============================
+          🔗 ENLACES DE INTERÉS
+      ============================== */}
       <div style={{ marginTop: 40 }}>
         <h2 style={{
           fontWeight: "900",
