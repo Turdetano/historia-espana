@@ -27,11 +27,32 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
+// 🎨 BOTONES RESTAURADOS
+const btnPrimary = {
+  background: "#1d4ed8",
+  color: "#fff",
+  padding: "12px 18px",
+  borderRadius: 10,
+  border: "none",
+  cursor: "pointer",
+  marginRight: 10,
+  fontWeight: "bold"
+};
+
+const btnDanger = {
+  background: "#b91c1c",
+  color: "#fff",
+  padding: "12px 18px",
+  borderRadius: 10,
+  border: "none",
+  cursor: "pointer",
+  fontWeight: "bold"
+};
+
 export default function App() {
 
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -49,19 +70,9 @@ export default function App() {
 
   // 🔐 AUTH
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
-
-      if (u) {
-        const ref = doc(db, "roles", u.uid);
-        const snap = await getDoc(ref);
-
-        if (u.uid === ADMIN_UID) setRole("owner");
-        else if (snap.exists()) setRole(snap.data().role);
-        else setRole("viewer");
-      }
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -72,7 +83,7 @@ export default function App() {
     );
   }, []);
 
-  // 🚀 PUBLICAR / EDITAR
+  // 🚀 PUBLICAR / EDITAR (FIX GUARDADO)
   const publish = async () => {
     if (!checkAuth()) return;
 
@@ -81,6 +92,7 @@ export default function App() {
       return;
     }
 
+    // ✏️ EDITAR (ARREGLADO)
     if (editingId) {
       await updateDoc(doc(db, "articles", editingId), {
         title,
@@ -88,16 +100,15 @@ export default function App() {
         category
       });
 
-      setArticles(prev =>
-        prev.map(a =>
-          a.id === editingId ? { ...a, title, content, category } : a
-        )
-      );
+      // 🔥 REFRESCO REAL DESDE FIREBASE
+      const snapshot = await getDocs(collection(db, "articles"));
+      setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
       resetForm();
       return;
     }
 
+    // 🆕 NUEVO
     const art = {
       title,
       content,
@@ -106,8 +117,10 @@ export default function App() {
       author: user?.email || "Anónimo"
     };
 
-    const ref = await addDoc(collection(db, "articles"), art);
-    setArticles(prev => [...prev, { ...art, id: ref.id }]);
+    await addDoc(collection(db, "articles"), art);
+
+    const snapshot = await getDocs(collection(db, "articles"));
+    setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
     resetForm();
   };
@@ -134,7 +147,9 @@ export default function App() {
     if (!confirm("¿Eliminar este artículo?")) return;
 
     await deleteDoc(doc(db, "articles", id));
-    setArticles(prev => prev.filter(a => a.id !== id));
+
+    const snapshot = await getDocs(collection(db, "articles"));
+    setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
   const sendToTelegram = async (a) => {
@@ -165,41 +180,63 @@ export default function App() {
       color: "#111"
     }}>
 
+      {/* 🔥 TÍTULO */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
         fontWeight: "900",
-        color: "#000"
+        color: "#020617"
       }}>
         📜 Historia de España
       </h1>
 
+      {/* LOGIN */}
       {!user ? (
-        <button onClick={login}>
-          Iniciar sesión
-        </button>
+        <div style={{ textAlign: "center" }}>
+          <button onClick={login} style={btnPrimary}>
+            Iniciar sesión
+          </button>
+        </div>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p>{user.email}</p>
-          <button onClick={logout}>
+          <p>👤 {user.email}</p>
+          <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
         </div>
       )}
 
-      {/* FORMULARIO */}
+      {/* ✍️ FORMULARIO */}
       {user && (
         <div style={{
-          background: "#fff",
-          padding: 20,
-          borderRadius: 10,
+          background: "#ffffff",
+          padding: 25,
+          borderRadius: 12,
           maxWidth: 600,
-          margin: "30px auto"
+          margin: "30px auto",
+          boxShadow: "0 6px 18px rgba(0,0,0,0.2)"
         }}>
-          <h2>✍️ Crear artículo</h2>
+          <h2 style={{
+            fontSize: "26px",
+            fontWeight: "900",
+            color: "#020617"
+          }}>
+            ✍️ Crear artículo
+          </h2>
 
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10 }} />
-          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10 }} />
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Título"
+            style={{ width: "100%", marginBottom: 10, padding: 10 }}
+          />
+
+          <textarea
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            placeholder="Contenido"
+            style={{ width: "100%", marginBottom: 10, padding: 10 }}
+          />
 
           <select value={category} onChange={e => setCategory(e.target.value)}>
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -207,13 +244,13 @@ export default function App() {
 
           <br /><br />
 
-          <button onClick={publish}>
-            {editingId ? "Actualizar" : "Publicar"}
+          <button onClick={publish} style={btnPrimary}>
+            {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
           </button>
         </div>
       )}
 
-      {/* ARTÍCULOS */}
+      {/* 📚 ARTÍCULOS */}
       {CATEGORIES.map(cat => (
         <div key={cat}>
           <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
@@ -228,16 +265,15 @@ export default function App() {
               <h3>{a.title}</h3>
               <p>{a.content}</p>
 
-              {/* 🖼 IMAGEN RESTAURADA */}
               {a.image && (
                 <img src={a.image} style={{ maxWidth: "100%", marginTop: 10 }} />
               )}
 
               {user && (
                 <>
-                  <button onClick={() => startEdit(a)}>Editar</button>
-                  <button onClick={() => remove(a.id)}>Eliminar</button>
-                  <button onClick={() => sendToTelegram(a)}>Telegram</button>
+                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
+                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
+                  <button onClick={() => sendToTelegram(a)} style={btnPrimary}>Telegram</button>
                 </>
               )}
             </div>
@@ -245,16 +281,40 @@ export default function App() {
         </div>
       ))}
 
-      {/* ENLACES */}
+      {/* 🔗 ENLACES MEJORADOS */}
       <div style={{ marginTop: 40 }}>
-        <h2>🔗 Enlaces de interés</h2>
+        <h2 style={{
+          fontWeight: "900",
+          fontSize: "26px",
+          color: "#020617",
+          background: "#e2e8f0",
+          padding: "10px",
+          borderRadius: "8px",
+          display: "inline-block"
+        }}>
+          🔗 Enlaces de interés
+        </h2>
 
-        <p><a href="https://es.hispanopedia.com/wiki/Inicio" target="_blank">Hispanopedia</a></p>
-        <p><a href="https://www.cervantesvirtual.com/" target="_blank">Biblioteca Cervantes</a></p>
-        <p><a href="https://www.rae.es/" target="_blank">Real Academia Española</a></p>
-        <p><a href="https://www.bne.es/" target="_blank">Biblioteca Nacional de España</a></p>
-        <p><a href="https://bghyn.com/" target="_blank">Genealogía</a></p>
-        <p><a href="https://www.rah.es/" target="_blank">Real Academia de la Historia</a></p>
+        <div style={{ marginTop: 15 }}>
+          {[
+            { name: "Hispanopedia", url: "https://es.hispanopedia.com/wiki/Inicio" },
+            { name: "Biblioteca Cervantes", url: "https://www.cervantesvirtual.com/" },
+            { name: "Real Academia Española", url: "https://www.rae.es/" },
+            { name: "Biblioteca Nacional de España", url: "https://www.bne.es/" },
+            { name: "Genealogía", url: "https://bghyn.com/" },
+            { name: "Real Academia de la Historia", url: "https://www.rah.es/" }
+          ].map(link => (
+            <p key={link.name}>
+              <a href={link.url} target="_blank" style={{
+                fontWeight: "900",
+                color: "#0f172a",
+                fontSize: "16px"
+              }}>
+                {link.name}
+              </a>
+            </p>
+          ))}
+        </div>
       </div>
 
     </div>
