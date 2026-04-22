@@ -5,7 +5,9 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  updateDoc
+  updateDoc,
+  getDoc,
+  setDoc
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -16,6 +18,7 @@ import {
 import { useState, useEffect } from "react";
 
 const provider = new GoogleAuthProvider();
+const ADMIN_UID = "PVBWPZUwVwZnwAnaA5F0a6UuqF83";
 
 const CATEGORIES = [
   "Edad Antigua",
@@ -25,7 +28,6 @@ const CATEGORIES = [
   "Edad Contemporánea"
 ];
 
-// BOTONES
 const btnPrimary = {
   background: "#1d4ed8",
   color: "#fff",
@@ -47,17 +49,26 @@ const btnDanger = {
   fontWeight: "bold"
 };
 
-const btnSecondary = {
-  background: "#475569",
-  color: "#fff",
-  padding: "12px 18px",
-  borderRadius: 10,
-  border: "none",
-  cursor: "pointer",
-  fontWeight: "bold"
+// 📤 TELEGRAM
+const sendToTelegram = async (article) => {
+  try {
+    const res = await fetch("/api/telegram", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(article)
+    });
+
+    const data = await res.json();
+    if (data.ok) alert("✅ Enviado a Telegram");
+    else alert("❌ Error en Telegram");
+  } catch {
+    alert("❌ Error conexión Telegram");
+  }
 };
 
-// CLOUDINARY
+// ☁️ CLOUDINARY
 const uploadImage = async (file) => {
   try {
     const formData = new FormData();
@@ -70,8 +81,6 @@ const uploadImage = async (file) => {
     );
 
     const data = await res.json();
-    if (!data.secure_url) throw new Error();
-
     return data.secure_url;
   } catch {
     alert("❌ Error al subir imagen");
@@ -80,50 +89,59 @@ const uploadImage = async (file) => {
 };
 
 export default function App() {
+
   const [articles, setArticles] = useState([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [selectedImage, setSelectedImage] = useState(null);
-
-  const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
   const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
+  const [loadingRole, setLoadingRole] = useState(true);
 
+  // 🔐 AUTH + ROLES
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      console.log("UID:", u?.uid);
+
+      if (u) {
+        const ref = doc(db, "roles", u.uid);
+        const snap = await getDoc(ref);
+
+        if (u.uid === ADMIN_UID) setRole("owner");
+        else if (snap.exists()) setRole(snap.data().role);
+        else setRole("viewer");
+      } else {
+        setRole(null);
+      }
+
+      setLoadingRole(false);
     });
 
     return () => unsubscribe();
   }, []);
 
+  // 📚 CARGAR ARTÍCULOS
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
     );
   }, []);
 
+  // ✍️ PUBLICAR / EDITAR
   const publish = async () => {
-    if (loading) return;
-
     if (!title || !content) {
       alert("❌ Rellena título y contenido");
       return;
     }
 
-    setLoading(true);
-
     let imageUrl = "";
 
     if (selectedImage) {
       imageUrl = await uploadImage(selectedImage);
-      if (!imageUrl) {
-        setLoading(false);
-        return;
-      }
+      if (!imageUrl) return;
     }
 
     if (editingId) {
@@ -152,20 +170,12 @@ export default function App() {
       category,
       image: imageUrl,
       date: new Date().toLocaleDateString(),
-      author: "Tartessos"
+      author: user?.email || "Anónimo",
+      authorId: user?.uid || ""
     };
 
     const ref = await addDoc(collection(db, "articles"), art);
-
     setArticles(prev => [...prev, { ...art, id: ref.id }]);
-
-    try {
-      await fetch("/api/telegram", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content })
-      });
-    } catch {}
 
     resetForm();
   };
@@ -175,7 +185,6 @@ export default function App() {
     setContent("");
     setSelectedImage(null);
     setEditingId(null);
-    setLoading(false);
   };
 
   const startEdit = (a) => {
@@ -186,14 +195,40 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const remove = async (id) => {
-    if (!confirm("¿Eliminar este artículo?")) return;
-    await deleteDoc(doc(db, "articles", id));
-    setArticles(prev => prev.filter(a => a.id !== id));
+  // 🗑 BORRAR
+  const remove = async (a) => {
+    const confirmDelete = window.confirm(
+      `⚠️ ¿Eliminar este artículo?\n\n${a.title}`
+    );
+    if (!confirmDelete) return;
+
+    await deleteDoc(doc(db, "articles", a.id));
+    setArticles(prev => prev.filter(x => x.id !== a.id));
+  };
+
+  // 🔐 ROLES
+  const addAdmin = async () => {
+    const uid = prompt("UID del usuario:");
+    if (!uid) return;
+
+    await setDoc(doc(db, "roles", uid), { role: "admin" });
+    alert("✅ Admin añadido");
+  };
+
+  const addEditor = async () => {
+    const uid = prompt("UID del usuario:");
+    if (!uid) return;
+
+    await setDoc(doc(db, "roles", uid), { role: "editor" });
+    alert("✅ Editor añadido");
   };
 
   const login = () => signInWithPopup(auth, provider);
   const logout = () => signOut(auth);
+
+  if (loadingRole) {
+    return <p style={{ textAlign: "center" }}>Cargando...</p>;
+  }
 
   return (
     <div style={{
@@ -201,37 +236,17 @@ export default function App() {
       minHeight: "100vh",
       padding: 20,
       fontFamily: "Segoe UI, Arial",
-      color: "#111" // 🔥 fuerza visibilidad total
+      color: "#111"
     }}>
 
-      {/* TITULO PRINCIPAL */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
         fontWeight: "900",
-        color: "#000",
-        textShadow: "1px 1px 2px rgba(0,0,0,0.2)"
+        color: "#020617"
       }}>
         📜 Historia de España
       </h1>
-
-      {/* TELEGRAM */}
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <a
-          href="https://t.me/Hispania_Imperial"
-          target="_blank"
-          style={{
-            background: "#0088cc",
-            color: "#fff",
-            padding: "12px 20px",
-            borderRadius: 10,
-            textDecoration: "none",
-            fontWeight: "bold"
-          }}
-        >
-          📢 Canal Hispania Imperial
-        </a>
-      </div>
 
       {!user ? (
         <button onClick={login} style={btnPrimary}>
@@ -239,63 +254,117 @@ export default function App() {
         </button>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p style={{ fontWeight: "bold", fontSize: "18px" }}>👤 Tartessos</p>
+          <p>👤 {user.email}</p>
+          <p style={{ fontSize: 12, color: "#334155" }}>
+            UID: {user.uid}
+          </p>
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
         </div>
       )}
 
-      {/* FORMULARIO */}
-      <div style={{
-        background: "#fff",
-        padding: 20,
-        borderRadius: 10,
-        maxWidth: 600,
-        margin: "30px auto",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
-      }}>
-        <h2 style={{
-          fontSize: "26px",
-          fontWeight: "900",
-          color: "#000"
+      {role === "owner" && (
+        <div style={{ textAlign: "center", marginTop: 10 }}>
+          <button onClick={addAdmin} style={btnPrimary}>
+            ➕ Añadir Admin
+          </button>
+          <button onClick={addEditor} style={btnPrimary}>
+            ➕ Añadir Editor
+          </button>
+        </div>
+      )}
+
+      {(role === "owner" || role === "admin" || role === "editor") && (
+        <div style={{
+          background: "#fff",
+          padding: 20,
+          borderRadius: 10,
+          maxWidth: 600,
+          margin: "30px auto",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
         }}>
-          ✍️ Crear artículo
-        </h2>
+          <h2 style={{ fontSize: "26px", fontWeight: "900", color: "#020617" }}>
+            ✍️ {editingId ? "Editar artículo" : "Crear artículo"}
+          </h2>
 
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
-        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Título"
+            style={{ width: "100%", marginBottom: 10, padding: 10 }}
+          />
 
-        <select value={category} onChange={e => setCategory(e.target.value)}>
-          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-        </select>
+          <textarea
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            placeholder="Contenido"
+            style={{ width: "100%", marginBottom: 10, padding: 10 }}
+          />
 
-        <br /><br />
+          <select value={category} onChange={e => setCategory(e.target.value)}>
+            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          </select>
 
-        <label style={{
-          background: "#0f172a",
-          color: "#fff",
-          padding: 10,
-          borderRadius: 6,
-          cursor: "pointer"
-        }}>
-          📸 Subir imagen
-          <input type="file" onChange={e => setSelectedImage(e.target.files[0])} style={{ display: "none" }} />
-        </label>
+          <br /><br />
 
-        <br /><br />
+          <input type="file" onChange={e => setSelectedImage(e.target.files[0])} />
 
-        <button onClick={publish} style={btnPrimary}>
-          🚀 Publicar
-        </button>
-      </div>
+          <br /><br />
 
-      {/* ENLACES */}
+          <button onClick={publish} style={btnPrimary}>
+            🚀 {editingId ? "Actualizar" : "Publicar"}
+          </button>
+        </div>
+      )}
+
+      {CATEGORIES.map(cat => (
+        <div key={cat}>
+          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
+
+          {articles.filter(a => a.category === cat).map(a => (
+            <div key={a.id} style={{
+              background: "#fff",
+              padding: 15,
+              marginBottom: 15,
+              borderRadius: 10
+            }}>
+              <h3>{a.title}</h3>
+
+              {/* ✅ IMAGEN CORRECTAMENTE INTEGRADA */}
+              {a.image && (
+                <img
+                  src={a.image}
+                  alt="imagen"
+                  style={{
+                    width: "100%",
+                    maxHeight: "300px",
+                    objectFit: "cover",
+                    borderRadius: "10px",
+                    marginBottom: "10px"
+                  }}
+                />
+              )}
+
+              <p>{a.content}</p>
+
+              <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
+              <button onClick={() => sendToTelegram(a)} style={btnPrimary}>Telegram</button>
+              <button onClick={() => remove(a)} style={btnDanger}>Eliminar</button>
+            </div>
+          ))}
+        </div>
+      ))}
+
       <div style={{ marginTop: 40 }}>
         <h2 style={{
-          fontSize: "24px",
           fontWeight: "900",
-          color: "#000"
+          fontSize: "26px",
+          color: "#020617",
+          background: "#e2e8f0",
+          padding: "10px",
+          borderRadius: "8px",
+          display: "inline-block"
         }}>
           🔗 Enlaces de interés
         </h2>
@@ -303,8 +372,9 @@ export default function App() {
         <p><a href="https://es.hispanopedia.com/wiki/Inicio" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Hispanopedia</a></p>
         <p><a href="https://www.cervantesvirtual.com/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Biblioteca Cervantes</a></p>
         <p><a href="https://www.rae.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Real Academia Española</a></p>
-        <p><a href="https://pares.culturaydeporte.gob.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Archivos Españoles (PARES)</a></p>
         <p><a href="https://www.bne.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Biblioteca Nacional de España</a></p>
+        <p><a href="https://bghyn.com/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Genealogía</a></p>
+        <p><a href="https://www.rah.es/" target="_blank" style={{ fontWeight: "bold", color: "#1d4ed8" }}>Real Academia de la Historia</a></p>
       </div>
 
     </div>
