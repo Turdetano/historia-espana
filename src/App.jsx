@@ -73,6 +73,7 @@ export default function App() {
 
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null); // 🔥 NUEVO
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -92,13 +93,35 @@ export default function App() {
   };
 
   // ==============================
-  // 🔐 AUTENTICACIÓN
+  // 🔐 AUTENTICACIÓN + ROLES
   // ==============================
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+
+      if (u) {
+        try {
+          const ref = doc(db, "roles", u.uid);
+          const snap = await getDoc(ref);
+
+          if (u.uid === ADMIN_UID) {
+            setRole("owner");
+          } else if (snap.exists()) {
+            setRole(snap.data().role);
+          } else {
+            setRole("editor"); // por defecto
+          }
+
+        } catch (err) {
+          console.error(err);
+          setRole("editor");
+        }
+      } else {
+        setRole(null);
+      }
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -127,7 +150,7 @@ export default function App() {
       return;
     }
 
-    // ✏️ MODO EDICIÓN
+    // ✏️ EDITAR
     if (editingId) {
       await updateDoc(doc(db, "articles", editingId), {
         title,
@@ -142,13 +165,14 @@ export default function App() {
       return;
     }
 
-    // 🆕 NUEVO ARTÍCULO
+    // 🆕 NUEVO
     const art = {
       title,
       content,
       category,
       date: new Date().toLocaleDateString(),
-      author: user?.email || "Anónimo"
+      author: user?.email || "Anónimo",
+      uid: user.uid // 🔥 importante para futuros permisos
     };
 
     await addDoc(collection(db, "articles"), art);
@@ -199,7 +223,7 @@ export default function App() {
   };
 
   // ==============================
-  // 📤 ENVIAR A TELEGRAM
+  // 📤 TELEGRAM
   // ==============================
 
   const sendToTelegram = async (a) => {
@@ -219,7 +243,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🎨 INTERFAZ (RENDER)
+  // 🎨 INTERFAZ
   // ==============================
 
   return (
@@ -231,9 +255,7 @@ export default function App() {
       color: "#111"
     }}>
 
-      {/* ==============================
-          🏛️ TÍTULO
-      ============================== */}
+      {/* 🏛️ TÍTULO */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
@@ -243,9 +265,7 @@ export default function App() {
         📜 Historia de España
       </h1>
 
-      {/* ==============================
-          🔐 LOGIN / USUARIO
-      ============================== */}
+      {/* 🔐 LOGIN */}
       {!user ? (
         <div style={{ textAlign: "center" }}>
           <button onClick={login} style={btnPrimary}>
@@ -255,15 +275,16 @@ export default function App() {
       ) : (
         <div style={{ textAlign: "center" }}>
           <p>👤 {user.email}</p>
+          <p>🔑 Rol: {role}</p>
+          <p style={{ fontSize: 12 }}>UID: {user.uid}</p>
+
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
         </div>
       )}
 
-      {/* ==============================
-          ✍️ FORMULARIO
-      ============================== */}
+      {/* ✍️ FORMULARIO */}
       {user && (
         <div style={{
           background: "#ffffff",
@@ -290,9 +311,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ==============================
-          📚 LISTADO DE ARTÍCULOS
-      ============================== */}
+      {/* 📚 ARTÍCULOS */}
       {CATEGORIES.map(cat => (
         <div key={cat}>
           <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
@@ -323,9 +342,7 @@ export default function App() {
         </div>
       ))}
 
-      {/* ==============================
-          🔗 ENLACES DE INTERÉS
-      ============================== */}
+      {/* 🔗 ENLACES */}
       <div style={{ marginTop: 40 }}>
         <h2 style={{
           fontWeight: "900",
