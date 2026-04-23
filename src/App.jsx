@@ -36,7 +36,7 @@ const CATEGORIES = [
 ];
 
 // ==============================
-// 🎨 ESTILOS (RECUPERADOS)
+// 🎨 ESTILOS
 // ==============================
 
 const btnPrimary = {
@@ -69,6 +69,9 @@ export default function App() {
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+
+  // 🆕 USUARIOS
+  const [users, setUsers] = useState([]);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -110,8 +113,8 @@ export default function App() {
   const logout = () => signOut(auth);
 
   // ==============================
-  // 🔒 PERMISOS (SIN ROMPER UI)
-// ==============================
+  // 🔒 PERMISOS
+  // ==============================
 
   const canEdit = (a) =>
     role === "owner" || role === "admin" || a.uid === user?.uid;
@@ -123,13 +126,32 @@ export default function App() {
     role === "owner" || role === "admin" || a.uid === user?.uid;
 
   // ==============================
-  // 📚 CARGA
+  // 📚 CARGA ARTÍCULOS
   // ==============================
 
   useEffect(() => {
     getDocs(collection(db, "articles")).then(s =>
       setArticles(s.docs.map(d => ({ id: d.id, ...d.data() })))
     );
+  }, []);
+
+  // ==============================
+  // 👤 CARGA USUARIOS (NUEVO)
+  // ==============================
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      const snap = await getDocs(collection(db, "roles"));
+
+      const list = snap.docs.map(d => ({
+        uid: d.id,
+        role: d.data().role
+      }));
+
+      setUsers(list);
+    };
+
+    loadUsers();
   }, []);
 
   // ==============================
@@ -209,7 +231,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🎨 UI COMPLETA RESTAURADA
+  // 🎨 UI
   // ==============================
 
   return (
@@ -265,7 +287,7 @@ export default function App() {
         </div>
       ))}
 
-      {/* 🔗 ENLACES RESTAURADOS */}
+      {/* 🔗 ENLACES DE INTERÉS */}
       <div>
         <h2>🔗 Enlaces de interés</h2>
 
@@ -276,6 +298,28 @@ export default function App() {
         <a href="https://bghyn.com/" target="_blank">Genealogía</a><br/>
         <a href="https://www.rah.es/" target="_blank">RAH</a>
       </div>
+
+      {/* 👤 PANEL USUARIOS */}
+      {user && role === "owner" && (
+        <div style={{
+          background: "#fff",
+          padding: 20,
+          marginTop: 40,
+          borderRadius: 10
+        }}>
+          <h2>👤 Usuarios del sistema</h2>
+
+          {users.map(u => (
+            <div key={u.uid} style={{
+              padding: 10,
+              borderBottom: "1px solid #ddd"
+            }}>
+              <p><strong>UID:</strong> {u.uid}</p>
+              <p><strong>Rol:</strong> {u.role}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
     </div>
   );
