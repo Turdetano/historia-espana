@@ -10,7 +10,8 @@ import {
   deleteDoc,
   doc,
   updateDoc,
-  getDoc
+  getDoc,
+  setDoc // 🆕 añadido
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -73,7 +74,7 @@ export default function App() {
 
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null); // 🔥 NUEVO
+  const [role, setRole] = useState(null);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -110,7 +111,7 @@ export default function App() {
           } else if (snap.exists()) {
             setRole(snap.data().role);
           } else {
-            setRole("editor"); // por defecto
+            setRole("editor");
           }
 
         } catch (err) {
@@ -127,6 +128,26 @@ export default function App() {
 
   const login = () => signInWithPopup(auth, provider);
   const logout = () => signOut(auth);
+
+  // ==============================
+  // 👑 CREAR ROLES (NUEVO)
+  // ==============================
+
+  const makeAdmin = async () => {
+    const uid = prompt("UID del nuevo ADMIN:");
+    if (!uid) return;
+
+    await setDoc(doc(db, "roles", uid), { role: "admin" });
+    alert("✅ Administrador añadido");
+  };
+
+  const makeEditor = async () => {
+    const uid = prompt("UID del nuevo EDITOR:");
+    if (!uid) return;
+
+    await setDoc(doc(db, "roles", uid), { role: "editor" });
+    alert("✅ Editor añadido");
+  };
 
   // ==============================
   // 📚 CARGA DE ARTÍCULOS
@@ -150,7 +171,6 @@ export default function App() {
       return;
     }
 
-    // ✏️ EDITAR
     if (editingId) {
       await updateDoc(doc(db, "articles", editingId), {
         title,
@@ -165,14 +185,13 @@ export default function App() {
       return;
     }
 
-    // 🆕 NUEVO
     const art = {
       title,
       content,
       category,
       date: new Date().toLocaleDateString(),
       author: user?.email || "Anónimo",
-      uid: user.uid // 🔥 importante para futuros permisos
+      uid: user.uid
     };
 
     await addDoc(collection(db, "articles"), art);
@@ -183,10 +202,6 @@ export default function App() {
     resetForm();
   };
 
-  // ==============================
-  // 🔄 RESET FORMULARIO
-  // ==============================
-
   const resetForm = () => {
     setTitle("");
     setContent("");
@@ -194,7 +209,7 @@ export default function App() {
   };
 
   // ==============================
-  // ✏️ INICIAR EDICIÓN
+  // ✏️ EDITAR
   // ==============================
 
   const startEdit = (a) => {
@@ -208,7 +223,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🗑 ELIMINAR ARTÍCULO
+  // 🗑 BORRAR
   // ==============================
 
   const remove = async (id) => {
@@ -281,6 +296,14 @@ export default function App() {
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
+
+          {/* 🆕 SOLO OWNER */}
+          {role === "owner" && (
+            <div style={{ marginTop: 10 }}>
+              <button onClick={makeAdmin} style={btnPrimary}>➕ Admin</button>
+              <button onClick={makeEditor} style={btnPrimary}>➕ Editor</button>
+            </div>
+          )}
         </div>
       )}
 
