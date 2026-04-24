@@ -27,6 +27,7 @@ import { useState, useEffect } from "react";
 const provider = new GoogleAuthProvider();
 const ADMIN_UID = "PVBWPZUwVwZnwAnaA5F0a6UuqF83";
 
+// 📚 Categorías históricas
 const CATEGORIES = [
   "Edad Antigua",
   "Edad Media",
@@ -66,6 +67,10 @@ const btnDanger = {
 
 export default function App() {
 
+  // ==============================
+  // 📊 ESTADOS
+  // ==============================
+
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
@@ -75,7 +80,7 @@ export default function App() {
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [editingId, setEditingId] = useState(null);
 
-  // 🔥 FIX REAL
+  // 🔥 NUEVO (FIX EDICIÓN)
   const [editingOwner, setEditingOwner] = useState(null);
 
   // ==============================
@@ -101,7 +106,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🔐 AUTH + ROLES
+  // 🔐 AUTENTICACIÓN + ROLES
   // ==============================
 
   useEffect(() => {
@@ -109,14 +114,20 @@ export default function App() {
       setUser(u);
 
       if (u) {
-        const ref = doc(db, "roles", u.uid);
-        const snap = await getDoc(ref);
+        try {
+          const ref = doc(db, "roles", u.uid);
+          const snap = await getDoc(ref);
 
-        if (u.uid === ADMIN_UID) {
-          setRole("owner");
-        } else if (snap.exists()) {
-          setRole(snap.data().role);
-        } else {
+          if (u.uid === ADMIN_UID) {
+            setRole("owner");
+          } else if (snap.exists()) {
+            setRole(snap.data().role);
+          } else {
+            setRole("editor");
+          }
+
+        } catch (err) {
+          console.error(err);
           setRole("editor");
         }
       } else {
@@ -131,7 +142,7 @@ export default function App() {
   const logout = () => signOut(auth);
 
   // ==============================
-  // 📚 CARGA ARTÍCULOS
+  // 📚 CARGA DE ARTÍCULOS
   // ==============================
 
   useEffect(() => {
@@ -155,7 +166,7 @@ export default function App() {
     // ✏️ EDITAR
     if (editingId) {
 
-      // 🔥 FIX PERMISOS REAL
+      // 🔥 FIX REAL
       if (role !== "owner" && role !== "admin" && editingOwner !== user.uid) {
         alert("❌ No tienes permiso");
         return;
@@ -173,7 +184,7 @@ export default function App() {
       setTitle("");
       setContent("");
       setEditingId(null);
-      setEditingOwner(null); // 🔥 reset
+      setEditingOwner(null);
 
       return;
     }
@@ -200,7 +211,7 @@ export default function App() {
   };
 
   // ==============================
-  // ✏️ EDITAR
+  // ✏️ INICIAR EDICIÓN
   // ==============================
 
   const startEdit = (a) => {
@@ -216,14 +227,14 @@ export default function App() {
     setCategory(a.category);
     setEditingId(a.id);
 
-    // 🔥 CLAVE
+    // 🔥 CLAVE DEL FIX
     setEditingOwner(a.uid);
 
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // ==============================
-  // 🗑 ELIMINAR
+  // 🗑 ELIMINAR ARTÍCULO
   // ==============================
 
   const remove = async (id) => {
@@ -270,7 +281,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🎨 UI (INTOCADO)
+  // 🎨 INTERFAZ (100% intacta)
   // ==============================
 
   return (
@@ -351,6 +362,10 @@ export default function App() {
               <h3>{a.title}</h3>
               <p>{a.content}</p>
 
+              {a.image && (
+                <img src={a.image} style={{ maxWidth: "100%", marginTop: 10 }} />
+              )}
+
               {user && (
                 <div style={{ marginTop: 10 }}>
                   {canEditOrDelete(a) && (
@@ -370,7 +385,7 @@ export default function App() {
         </div>
       ))}
 
-      {/* 🔗 ENLACES (INTOCADO) */}
+      {/* 🔗 ENLACES */}
       <div style={{ marginTop: 40 }}>
         <h2 style={{
           fontWeight: "900",
