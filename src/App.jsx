@@ -90,6 +90,18 @@ export default function App() {
   };
 
   // ==============================
+  // 🔐 CONTROL DE PERMISOS
+  // ==============================
+
+  const canEditOrDelete = (article) => {
+    if (!user) return false;
+
+    if (role === "owner" || role === "admin") return true;
+
+    return article.uid === user.uid;
+  };
+
+  // ==============================
   // 🔐 AUTENTICACIÓN + ROLES
   // ==============================
 
@@ -228,11 +240,19 @@ export default function App() {
     }
 
     if (editingId) {
+      const article = articles.find(a => a.id === editingId);
+
+      if (!canEditOrDelete(article)) {
+        alert("❌ No tienes permiso");
+        return;
+      }
+
       await updateDoc(doc(db, "articles", editingId), {
         title,
         content,
         category
       });
+
     } else {
       await addDoc(collection(db, "articles"), {
         title,
@@ -252,8 +272,17 @@ export default function App() {
     setEditingId(null);
   };
 
+  // ==============================
+  // ✏️ EDITAR
+  // ==============================
+
   const startEdit = (a) => {
     if (!checkAuth()) return;
+
+    if (!canEditOrDelete(a)) {
+      alert("❌ No tienes permiso");
+      return;
+    }
 
     setTitle(a.title);
     setContent(a.content);
@@ -261,8 +290,19 @@ export default function App() {
     setEditingId(a.id);
   };
 
+  // ==============================
+  // 🗑 ELIMINAR
+  // ==============================
+
   const remove = async (id) => {
     if (!checkAuth()) return;
+
+    const article = articles.find(a => a.id === id);
+
+    if (!canEditOrDelete(article)) {
+      alert("❌ No tienes permiso");
+      return;
+    }
 
     if (!confirm("¿Eliminar este artículo?")) return;
 
@@ -272,8 +312,17 @@ export default function App() {
     setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
+  // ==============================
+  // 📤 TELEGRAM
+  // ==============================
+
   const sendToTelegram = async (a) => {
     if (!checkAuth()) return;
+
+    if (!(role === "admin" || role === "owner")) {
+      alert("❌ Solo admin o owner");
+      return;
+    }
 
     if (!confirm("¿Enviar a Telegram?")) return;
 
@@ -433,11 +482,28 @@ export default function App() {
 
               {user && (
                 <div style={{ marginTop: 10 }}>
-                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
-                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
-                  <button onClick={() => sendToTelegram(a)} style={btnPrimary}>Telegram</button>
+
+                  {canEditOrDelete(a) && (
+                    <>
+                      <button onClick={() => startEdit(a)} style={btnPrimary}>
+                        Editar
+                      </button>
+
+                      <button onClick={() => remove(a.id)} style={btnDanger}>
+                        Eliminar
+                      </button>
+                    </>
+                  )}
+
+                  {(role === "admin" || role === "owner") && (
+                    <button onClick={() => sendToTelegram(a)} style={btnPrimary}>
+                      Telegram
+                    </button>
+                  )}
+
                 </div>
               )}
+
             </div>
           ))}
         </div>
