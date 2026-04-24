@@ -10,8 +10,7 @@ import {
   deleteDoc,
   doc,
   updateDoc,
-  getDoc,
-  setDoc
+  getDoc
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -62,7 +61,7 @@ const btnDanger = {
 };
 
 // ==============================
-// 🚀 APP
+// 🚀 COMPONENTE PRINCIPAL
 // ==============================
 
 export default function App() {
@@ -70,12 +69,14 @@ export default function App() {
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
-  const [users, setUsers] = useState([]);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [editingId, setEditingId] = useState(null);
+
+  // 🔥 FIX REAL
+  const [editingOwner, setEditingOwner] = useState(null);
 
   // ==============================
   // 🔒 SEGURIDAD
@@ -90,19 +91,17 @@ export default function App() {
   };
 
   // ==============================
-  // 🔐 CONTROL DE PERMISOS
+  // 🔐 PERMISOS
   // ==============================
 
   const canEditOrDelete = (article) => {
     if (!user) return false;
-
     if (role === "owner" || role === "admin") return true;
-
     return article.uid === user.uid;
   };
 
   // ==============================
-  // 🔐 AUTENTICACIÓN + ROLES
+  // 🔐 AUTH + ROLES
   // ==============================
 
   useEffect(() => {
@@ -110,19 +109,14 @@ export default function App() {
       setUser(u);
 
       if (u) {
-        try {
-          const ref = doc(db, "roles", u.uid);
-          const snap = await getDoc(ref);
+        const ref = doc(db, "roles", u.uid);
+        const snap = await getDoc(ref);
 
-          if (u.uid === ADMIN_UID) {
-            setRole("owner");
-          } else if (snap.exists()) {
-            setRole(snap.data().role);
-          } else {
-            setRole("editor");
-          }
-
-        } catch {
+        if (u.uid === ADMIN_UID) {
+          setRole("owner");
+        } else if (snap.exists()) {
+          setRole(snap.data().role);
+        } else {
           setRole("editor");
         }
       } else {
@@ -137,88 +131,7 @@ export default function App() {
   const logout = () => signOut(auth);
 
   // ==============================
-  // 👑 CREAR ROLES
-  // ==============================
-
-  const makeAdmin = async () => {
-    const uid = prompt("UID del nuevo ADMIN:");
-    if (!uid) return;
-
-    await setDoc(doc(db, "roles", uid), { role: "admin" });
-    alert("✅ Administrador añadido");
-  };
-
-  const makeEditor = async () => {
-    const uid = prompt("UID del nuevo EDITOR:");
-    if (!uid) return;
-
-    await setDoc(doc(db, "roles", uid), { role: "editor" });
-    alert("✅ Editor añadido");
-  };
-
-  // ==============================
-  // ❌ ELIMINAR USUARIO
-  // ==============================
-
-  const deleteUserRole = async (uid) => {
-    if (uid === ADMIN_UID) {
-      alert("❌ No puedes eliminar al OWNER");
-      return;
-    }
-
-    if (!confirm("¿Eliminar este usuario?")) return;
-
-    await deleteDoc(doc(db, "roles", uid));
-
-    const snap = await getDocs(collection(db, "roles"));
-    setUsers(snap.docs.map(d => ({
-      uid: d.id,
-      role: d.data().role
-    })));
-  };
-
-  // ==============================
-  // 🔄 CAMBIAR ROL
-  // ==============================
-
-  const toggleRole = async (uid, currentRole) => {
-    if (uid === ADMIN_UID) {
-      alert("❌ No puedes modificar al OWNER");
-      return;
-    }
-
-    const newRole = currentRole === "admin" ? "editor" : "admin";
-
-    await setDoc(doc(db, "roles", uid), { role: newRole });
-
-    const snap = await getDocs(collection(db, "roles"));
-    setUsers(snap.docs.map(d => ({
-      uid: d.id,
-      role: d.data().role
-    })));
-  };
-
-  // ==============================
-  // 👤 CARGAR USUARIOS
-  // ==============================
-
-  useEffect(() => {
-    const loadUsers = async () => {
-      const snap = await getDocs(collection(db, "roles"));
-
-      const list = snap.docs.map(d => ({
-        uid: d.id,
-        role: d.data().role
-      }));
-
-      setUsers(list);
-    };
-
-    loadUsers();
-  }, []);
-
-  // ==============================
-  // 📚 ARTÍCULOS
+  // 📚 CARGA ARTÍCULOS
   // ==============================
 
   useEffect(() => {
@@ -239,10 +152,11 @@ export default function App() {
       return;
     }
 
+    // ✏️ EDITAR
     if (editingId) {
-      const article = articles.find(a => a.id === editingId);
 
-      if (!canEditOrDelete(article)) {
+      // 🔥 FIX PERMISOS REAL
+      if (role !== "owner" && role !== "admin" && editingOwner !== user.uid) {
         alert("❌ No tienes permiso");
         return;
       }
@@ -253,16 +167,28 @@ export default function App() {
         category
       });
 
-    } else {
-      await addDoc(collection(db, "articles"), {
-        title,
-        content,
-        category,
-        date: new Date().toLocaleDateString(),
-        author: user.email,
-        uid: user.uid
-      });
+      const snapshot = await getDocs(collection(db, "articles"));
+      setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      setTitle("");
+      setContent("");
+      setEditingId(null);
+      setEditingOwner(null); // 🔥 reset
+
+      return;
     }
+
+    // 🆕 NUEVO
+    const art = {
+      title,
+      content,
+      category,
+      date: new Date().toLocaleDateString(),
+      author: user?.email || "Anónimo",
+      uid: user.uid
+    };
+
+    await addDoc(collection(db, "articles"), art);
 
     const snapshot = await getDocs(collection(db, "articles"));
     setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -270,6 +196,7 @@ export default function App() {
     setTitle("");
     setContent("");
     setEditingId(null);
+    setEditingOwner(null);
   };
 
   // ==============================
@@ -288,6 +215,11 @@ export default function App() {
     setContent(a.content);
     setCategory(a.category);
     setEditingId(a.id);
+
+    // 🔥 CLAVE
+    setEditingOwner(a.uid);
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // ==============================
@@ -338,7 +270,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🎨 UI
+  // 🎨 UI (INTOCADO)
   // ==============================
 
   return (
@@ -374,54 +306,6 @@ export default function App() {
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
-
-          {role === "owner" && (
-            <div style={{ marginTop: 10 }}>
-              <button onClick={makeAdmin} style={btnPrimary}>➕ Admin</button>
-              <button onClick={makeEditor} style={btnPrimary}>➕ Editor</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 👤 USUARIOS */}
-      {user && role === "owner" && (
-        <div style={{
-          background: "#fff",
-          padding: 20,
-          marginTop: 20,
-          borderRadius: 10
-        }}>
-          <h2 style={{
-            color: "#020617",
-            background: "#e2e8f0",
-            padding: "10px",
-            borderRadius: "8px",
-            display: "inline-block",
-            fontWeight: "900"
-          }}>
-            👤 Usuarios del sistema
-          </h2>
-
-          {users.map(u => (
-            <div key={u.uid} style={{
-              marginBottom: 10,
-              padding: 10,
-              background: "#f8fafc",
-              borderRadius: 8
-            }}>
-              <p><strong>UID:</strong> {u.uid}</p>
-              <p><strong>Rol:</strong> {u.role}</p>
-
-              <button onClick={() => toggleRole(u.uid, u.role)} style={btnPrimary}>
-                🔄 Cambiar rol
-              </button>
-
-              <button onClick={() => deleteUserRole(u.uid)} style={btnDanger}>
-                ❌ Eliminar
-              </button>
-            </div>
-          ))}
         </div>
       )}
 
@@ -435,16 +319,7 @@ export default function App() {
           margin: "30px auto",
           boxShadow: "0 6px 18px rgba(0,0,0,0.2)"
         }}>
-          <h2 style={{
-            color: "#020617",
-            background: "#e2e8f0",
-            padding: "10px",
-            borderRadius: "8px",
-            display: "inline-block",
-            fontWeight: "900"
-          }}>
-            ✍️ Crear artículo
-          </h2>
+          <h2>✍️ Crear artículo</h2>
 
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
           <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
@@ -476,40 +351,26 @@ export default function App() {
               <h3>{a.title}</h3>
               <p>{a.content}</p>
 
-              {a.image && (
-                <img src={a.image} style={{ maxWidth: "100%", marginTop: 10 }} />
-              )}
-
               {user && (
                 <div style={{ marginTop: 10 }}>
-
                   {canEditOrDelete(a) && (
                     <>
-                      <button onClick={() => startEdit(a)} style={btnPrimary}>
-                        Editar
-                      </button>
-
-                      <button onClick={() => remove(a.id)} style={btnDanger}>
-                        Eliminar
-                      </button>
+                      <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
+                      <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
                     </>
                   )}
 
                   {(role === "admin" || role === "owner") && (
-                    <button onClick={() => sendToTelegram(a)} style={btnPrimary}>
-                      Telegram
-                    </button>
+                    <button onClick={() => sendToTelegram(a)} style={btnPrimary}>Telegram</button>
                   )}
-
                 </div>
               )}
-
             </div>
           ))}
         </div>
       ))}
 
-      {/* 🔗 ENLACES */}
+      {/* 🔗 ENLACES (INTOCADO) */}
       <div style={{ marginTop: 40 }}>
         <h2 style={{
           fontWeight: "900",
