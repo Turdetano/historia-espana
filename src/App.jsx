@@ -62,14 +62,10 @@ const btnDanger = {
 };
 
 // ==============================
-// 🚀 COMPONENTE PRINCIPAL
+// 🚀 APP
 // ==============================
 
 export default function App() {
-
-  // ==============================
-  // 📊 ESTADOS
-  // ==============================
 
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
@@ -114,8 +110,7 @@ export default function App() {
             setRole("editor");
           }
 
-        } catch (err) {
-          console.error(err);
+        } catch {
           setRole("editor");
         }
       } else {
@@ -150,6 +145,48 @@ export default function App() {
   };
 
   // ==============================
+  // ❌ ELIMINAR USUARIO
+  // ==============================
+
+  const deleteUserRole = async (uid) => {
+    if (uid === ADMIN_UID) {
+      alert("❌ No puedes eliminar al OWNER");
+      return;
+    }
+
+    if (!confirm("¿Eliminar este usuario?")) return;
+
+    await deleteDoc(doc(db, "roles", uid));
+
+    const snap = await getDocs(collection(db, "roles"));
+    setUsers(snap.docs.map(d => ({
+      uid: d.id,
+      role: d.data().role
+    })));
+  };
+
+  // ==============================
+  // 🔄 CAMBIAR ROL
+  // ==============================
+
+  const toggleRole = async (uid, currentRole) => {
+    if (uid === ADMIN_UID) {
+      alert("❌ No puedes modificar al OWNER");
+      return;
+    }
+
+    const newRole = currentRole === "admin" ? "editor" : "admin";
+
+    await setDoc(doc(db, "roles", uid), { role: newRole });
+
+    const snap = await getDocs(collection(db, "roles"));
+    setUsers(snap.docs.map(d => ({
+      uid: d.id,
+      role: d.data().role
+    })));
+  };
+
+  // ==============================
   // 👤 CARGAR USUARIOS
   // ==============================
 
@@ -169,7 +206,7 @@ export default function App() {
   }, []);
 
   // ==============================
-  // 📚 CARGA DE ARTÍCULOS
+  // 📚 ARTÍCULOS
   // ==============================
 
   useEffect(() => {
@@ -196,40 +233,24 @@ export default function App() {
         content,
         category
       });
-
-      const snapshot = await getDocs(collection(db, "articles"));
-      setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-
-      resetForm();
-      return;
+    } else {
+      await addDoc(collection(db, "articles"), {
+        title,
+        content,
+        category,
+        date: new Date().toLocaleDateString(),
+        author: user.email,
+        uid: user.uid
+      });
     }
-
-    const art = {
-      title,
-      content,
-      category,
-      date: new Date().toLocaleDateString(),
-      author: user?.email || "Anónimo",
-      uid: user.uid
-    };
-
-    await addDoc(collection(db, "articles"), art);
 
     const snapshot = await getDocs(collection(db, "articles"));
     setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
-    resetForm();
-  };
-
-  const resetForm = () => {
     setTitle("");
     setContent("");
     setEditingId(null);
   };
-
-  // ==============================
-  // ✏️ INICIAR EDICIÓN
-  // ==============================
 
   const startEdit = (a) => {
     if (!checkAuth()) return;
@@ -238,12 +259,7 @@ export default function App() {
     setContent(a.content);
     setCategory(a.category);
     setEditingId(a.id);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
-
-  // ==============================
-  // 🗑 ELIMINAR ARTÍCULO
-  // ==============================
 
   const remove = async (id) => {
     if (!checkAuth()) return;
@@ -255,10 +271,6 @@ export default function App() {
     const snapshot = await getDocs(collection(db, "articles"));
     setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
   };
-
-  // ==============================
-  // 📤 TELEGRAM
-  // ==============================
 
   const sendToTelegram = async (a) => {
     if (!checkAuth()) return;
@@ -277,7 +289,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🎨 INTERFAZ
+  // 🎨 UI
   // ==============================
 
   return (
@@ -343,9 +355,22 @@ export default function App() {
           </h2>
 
           {users.map(u => (
-            <div key={u.uid}>
+            <div key={u.uid} style={{
+              marginBottom: 10,
+              padding: 10,
+              background: "#f8fafc",
+              borderRadius: 8
+            }}>
               <p><strong>UID:</strong> {u.uid}</p>
               <p><strong>Rol:</strong> {u.role}</p>
+
+              <button onClick={() => toggleRole(u.uid, u.role)} style={btnPrimary}>
+                🔄 Cambiar rol
+              </button>
+
+              <button onClick={() => deleteUserRole(u.uid)} style={btnDanger}>
+                ❌ Eliminar
+              </button>
             </div>
           ))}
         </div>
