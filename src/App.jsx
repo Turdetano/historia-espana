@@ -28,7 +28,6 @@ import { useState, useEffect } from "react";
 const provider = new GoogleAuthProvider();
 const ADMIN_UID = "PVBWPZUwVwZnwAnaA5F0a6UuqF83";
 
-// 📚 Categorías históricas
 const CATEGORIES = [
   "Edad Antigua",
   "Edad Media",
@@ -75,8 +74,7 @@ export default function App() {
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
-
-  const [users, setUsers] = useState([]); // 🆕 NUEVO
+  const [users, setUsers] = useState([]);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -291,7 +289,6 @@ export default function App() {
       color: "#111"
     }}>
 
-      {/* 🏛️ TÍTULO */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
@@ -301,7 +298,6 @@ export default function App() {
         📜 Historia de España
       </h1>
 
-      {/* 🔐 LOGIN */}
       {!user ? (
         <div style={{ textAlign: "center" }}>
           <button onClick={login} style={btnPrimary}>
@@ -327,7 +323,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 👤 PANEL USUARIOS */}
+      {/* 👤 USUARIOS */}
       {user && role === "owner" && (
         <div style={{
           background: "#fff",
@@ -335,7 +331,16 @@ export default function App() {
           marginTop: 20,
           borderRadius: 10
         }}>
-          <h2>👤 Usuarios del sistema</h2>
+          <h2 style={{
+            color: "#020617",
+            background: "#e2e8f0",
+            padding: "10px",
+            borderRadius: "8px",
+            display: "inline-block",
+            fontWeight: "900"
+          }}>
+            👤 Usuarios del sistema
+          </h2>
 
           {users.map(u => (
             <div key={u.uid}>
@@ -356,7 +361,16 @@ export default function App() {
           margin: "30px auto",
           boxShadow: "0 6px 18px rgba(0,0,0,0.2)"
         }}>
-          <h2>✍️ Crear artículo</h2>
+          <h2 style={{
+            color: "#020617",
+            background: "#e2e8f0",
+            padding: "10px",
+            borderRadius: "8px",
+            display: "inline-block",
+            fontWeight: "900"
+          }}>
+            ✍️ Crear artículo
+          </h2>
 
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
           <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
