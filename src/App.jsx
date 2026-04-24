@@ -11,7 +11,7 @@ import {
   doc,
   updateDoc,
   getDoc,
-  setDoc // 🆕 añadido
+  setDoc
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -76,6 +76,8 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
 
+  const [users, setUsers] = useState([]); // 🆕 NUEVO
+
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -130,7 +132,7 @@ export default function App() {
   const logout = () => signOut(auth);
 
   // ==============================
-  // 👑 CREAR ROLES (NUEVO)
+  // 👑 CREAR ROLES
   // ==============================
 
   const makeAdmin = async () => {
@@ -148,6 +150,25 @@ export default function App() {
     await setDoc(doc(db, "roles", uid), { role: "editor" });
     alert("✅ Editor añadido");
   };
+
+  // ==============================
+  // 👤 CARGAR USUARIOS
+  // ==============================
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      const snap = await getDocs(collection(db, "roles"));
+
+      const list = snap.docs.map(d => ({
+        uid: d.id,
+        role: d.data().role
+      }));
+
+      setUsers(list);
+    };
+
+    loadUsers();
+  }, []);
 
   // ==============================
   // 📚 CARGA DE ARTÍCULOS
@@ -209,7 +230,7 @@ export default function App() {
   };
 
   // ==============================
-  // ✏️ EDITAR
+  // ✏️ INICIAR EDICIÓN
   // ==============================
 
   const startEdit = (a) => {
@@ -223,7 +244,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🗑 BORRAR
+  // 🗑 ELIMINAR ARTÍCULO
   // ==============================
 
   const remove = async (id) => {
@@ -297,13 +318,31 @@ export default function App() {
             Cerrar sesión
           </button>
 
-          {/* 🆕 SOLO OWNER */}
           {role === "owner" && (
             <div style={{ marginTop: 10 }}>
               <button onClick={makeAdmin} style={btnPrimary}>➕ Admin</button>
               <button onClick={makeEditor} style={btnPrimary}>➕ Editor</button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 👤 PANEL USUARIOS */}
+      {user && role === "owner" && (
+        <div style={{
+          background: "#fff",
+          padding: 20,
+          marginTop: 20,
+          borderRadius: 10
+        }}>
+          <h2>👤 Usuarios del sistema</h2>
+
+          {users.map(u => (
+            <div key={u.uid}>
+              <p><strong>UID:</strong> {u.uid}</p>
+              <p><strong>Rol:</strong> {u.role}</p>
+            </div>
+          ))}
         </div>
       )}
 
