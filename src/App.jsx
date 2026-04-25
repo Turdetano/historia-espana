@@ -22,7 +22,7 @@ import {
 import { useState, useEffect } from "react";
 
 // ==============================
-// ⚙️ CONFIGURACIÓN
+// ⚙️ CONFIG
 // ==============================
 
 const provider = new GoogleAuthProvider();
@@ -43,8 +43,8 @@ const CATEGORIES = [
 const btnPrimary = {
   background: "#1d4ed8",
   color: "#fff",
-  padding: "12px 18px",
-  borderRadius: 10,
+  padding: "10px 16px",
+  borderRadius: 8,
   border: "none",
   cursor: "pointer",
   marginRight: 10,
@@ -54,8 +54,8 @@ const btnPrimary = {
 const btnDanger = {
   background: "#b91c1c",
   color: "#fff",
-  padding: "12px 18px",
-  borderRadius: 10,
+  padding: "10px 16px",
+  borderRadius: 8,
   border: "none",
   cursor: "pointer",
   fontWeight: "bold"
@@ -67,9 +67,9 @@ const btnDanger = {
 
 export default function App() {
 
-  const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
+  const [articles, setArticles] = useState([]);
   const [users, setUsers] = useState([]);
 
   const [title, setTitle] = useState("");
@@ -80,11 +80,11 @@ export default function App() {
   const [view, setView] = useState("home");
 
   // ==============================
-  // 🔐 AUTH
+  // AUTH
   // ==============================
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
+    return onAuthStateChanged(auth, async (u) => {
       setUser(u);
 
       if (u) {
@@ -98,40 +98,19 @@ export default function App() {
         setRole(null);
       }
     });
-
-    return () => unsub();
   }, []);
 
   const login = () => signInWithPopup(auth, provider);
   const logout = () => signOut(auth);
 
   // ==============================
-  // 👑 ROLES
+  // ROLES
   // ==============================
 
-  const makeAdmin = async () => {
-    const uid = prompt("UID admin:");
+  const makeRole = async (roleType) => {
+    const uid = prompt("UID:");
     if (!uid) return;
-    await setDoc(doc(db, "roles", uid), { role: "admin" });
-    loadUsers();
-  };
-
-  const makeEditor = async () => {
-    const uid = prompt("UID editor:");
-    if (!uid) return;
-    await setDoc(doc(db, "roles", uid), { role: "editor" });
-    loadUsers();
-  };
-
-  const deleteUserRole = async (uid) => {
-    if (!confirm("¿Eliminar usuario?")) return;
-    await deleteDoc(doc(db, "roles", uid));
-    loadUsers();
-  };
-
-  const toggleRole = async (uid, role) => {
-    const newRole = role === "admin" ? "editor" : "admin";
-    await setDoc(doc(db, "roles", uid), { role: newRole });
+    await setDoc(doc(db, "roles", uid), { role: roleType });
     loadUsers();
   };
 
@@ -145,7 +124,7 @@ export default function App() {
   }, []);
 
   // ==============================
-  // 📚 ARTÍCULOS
+  // ARTICLES
   // ==============================
 
   const loadArticles = async () => {
@@ -157,12 +136,8 @@ export default function App() {
     loadArticles();
   }, []);
 
-  // ==============================
-  // 🚀 PUBLICAR / EDITAR
-  // ==============================
-
   const publish = async () => {
-    if (!user) return alert("Debes iniciar sesión");
+    if (!user) return;
 
     if (editingId) {
       await updateDoc(doc(db, "articles", editingId), {
@@ -196,7 +171,7 @@ export default function App() {
   };
 
   const remove = async (id) => {
-    if (!confirm("¿Eliminar artículo?")) return;
+    if (!confirm("¿Eliminar?")) return;
     await deleteDoc(doc(db, "articles", id));
     loadArticles();
   };
@@ -210,116 +185,92 @@ export default function App() {
       body: JSON.stringify(a)
     });
 
-    alert("Enviado a Telegram");
+    alert("Enviado");
   };
 
   // ==============================
-  // 🎨 UI
+  // UI
   // ==============================
 
   return (
-    <div style={{ background: "#f1f5f9", minHeight: "100vh", padding: 20 }}>
+    <div style={{ padding: 20, background: "#f1f5f9", minHeight: "100vh" }}>
 
-      <h1 style={{ textAlign: "center" }}>📜 Historia de España</h1>
+      <h1 style={{ textAlign: "center" }}>
+        📜 Historia de España
+      </h1>
 
       {/* NAV */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <button onClick={() => setView("home")} style={btnPrimary}>🏠 Inicio</button>
-        <button onClick={() => setView("articles")} style={btnPrimary}>📚 Artículos</button>
-        <button onClick={() => setView("links")} style={btnPrimary}>🔗 Enlaces</button>
+        <button onClick={() => setView("home")} style={btnPrimary}>Inicio</button>
+        <button onClick={() => setView("articles")} style={btnPrimary}>Artículos</button>
+        <button onClick={() => setView("links")} style={btnPrimary}>Enlaces</button>
       </div>
 
       {/* HOME */}
       {view === "home" && (
-        <>
+        <div style={{ textAlign: "center" }}>
           {!user ? (
-            <button onClick={login} style={btnPrimary}>Iniciar sesión</button>
+            <button onClick={login} style={btnPrimary}>Login</button>
           ) : (
-            <div style={{ textAlign: "center" }}>
+            <>
               <p>👤 {user.email}</p>
               <p>🔑 {role}</p>
-
-              <button onClick={logout} style={btnDanger}>Cerrar sesión</button>
+              <button onClick={logout} style={btnDanger}>Logout</button>
 
               {role === "owner" && (
                 <div style={{ marginTop: 20 }}>
-                  <button onClick={makeAdmin} style={btnPrimary}>➕ Admin</button>
-                  <button onClick={makeEditor} style={btnPrimary}>➕ Editor</button>
+                  <button onClick={() => makeRole("admin")} style={btnPrimary}>Admin</button>
+                  <button onClick={() => makeRole("editor")} style={btnPrimary}>Editor</button>
 
                   <h3>Usuarios</h3>
 
                   {users.map(u => (
-                    <div key={u.uid}>
-                      <p>{u.uid} - {u.role}</p>
-                      <button onClick={() => toggleRole(u.uid, u.role)} style={btnPrimary}>
-                        Cambiar rol
-                      </button>
-                      <button onClick={() => deleteUserRole(u.uid)} style={btnDanger}>
-                        Eliminar
-                      </button>
-                    </div>
+                    <p key={u.uid}>{u.uid} - {u.role}</p>
                   ))}
                 </div>
               )}
-            </div>
+            </>
           )}
-        </>
+        </div>
       )}
 
       {/* ARTICLES */}
       {view === "articles" && (
-        <>
+        <div>
           {CATEGORIES.map(cat => (
             <div key={cat}>
-              <h2>📚 {cat}</h2>
+              <h2>{cat}</h2>
 
               {articles.filter(a => a.category === cat).map(a => (
                 <div key={a.id} style={{ background: "#fff", padding: 10, margin: 10 }}>
                   <h3>{a.title}</h3>
                   <p>{a.content}</p>
 
-                  {user && (
-                    <>
-                      <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
-                      <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
-                      <button onClick={() => sendToTelegram(a)} style={btnPrimary}>Telegram</button>
-                    </>
-                  )}
+                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
+                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
+                  <button onClick={() => sendToTelegram(a)} style={btnPrimary}>Telegram</button>
                 </div>
               ))}
             </div>
           ))}
-        </>
+        </div>
       )}
 
       {/* LINKS */}
-      {view === "links" && (
-  <div style={{ maxWidth: 800, margin: "0 auto" }}>
-
-    <h2 style={{
-      background: "#e2e8f0",
-      padding: "12px",
-      borderRadius: "10px",
-      fontWeight: "900",
-      textAlign: "center"
-    }}>
-      🔗 Enlaces de interés
-          {/* 🔗 ENLACES */}
       {view === "links" && (
         <div>
           <h2>🔗 Enlaces de interés</h2>
 
           {[
-            { name: "Hispanopedia", url: "https://es.hispanopedia.com/wiki/Inicio" },
-            { name: "Cervantes", url: "https://www.cervantesvirtual.com/" },
-            { name: "RAE", url: "https://www.rae.es/" },
-            { name: "BNE", url: "https://www.bne.es/" },
-            { name: "Genealogía", url: "https://bghyn.com/" },
-            { name: "Real Academia de la Historia", url: "https://www.rah.es/" }
+            ["RAH", "https://www.rah.es/"],
+            ["RAE", "https://www.rae.es/"],
+            ["Cervantes", "https://www.cervantesvirtual.com/"],
+            ["BNE", "https://www.bne.es/"],
+            ["Genealogía", "https://bghyn.com/"]
           ].map(l => (
-            <p key={l.name}>
-              <a href={l.url} target="_blank" rel="noreferrer">
-                {l.name}
+            <p key={l[0]}>
+              <a href={l[1]} target="_blank" rel="noreferrer">
+                {l[0]}
               </a>
             </p>
           ))}
