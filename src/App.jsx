@@ -304,41 +304,28 @@ export default function App() {
       textAlign: "center"
     }}>
       🔗 Enlaces de interés
-    </h2>
+          {/* 🔗 ENLACES */}
+      {view === "links" && (
+        <div>
+          <h2>🔗 Enlaces de interés</h2>
 
-    <div style={{ marginTop: 20 }}>
-
-      {[
-        { name: "Hispanopedia", url: "https://es.hispanopedia.com/wiki/Inicio" },
-        { name: "Biblioteca Cervantes", url: "https://www.cervantesvirtual.com/" },
-        { name: "Real Academia Española", url: "https://www.rae.es/" },
-        { name: "Biblioteca Nacional de España", url: "https://www.bne.es/" },
-        { name: "Genealogía", url: "https://bghyn.com/" },
-        { name: "Real Academia de la Historia", url: "https://www.rah.es/" }
-      ].map(link => (
-        <div key={link.name} style={{
-          background: "#fff",
-          padding: "12px",
-          marginBottom: "10px",
-          borderRadius: "10px",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.08)"
-        }}>
-          <a
-            href={link.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              fontWeight: "800",
-              color: "#0f172a",
-              fontSize: "16px",
-              textDecoration: "none"
-            }}
-          >
-            🔗 {link.name}
-          </a>
+          {[
+            { name: "Hispanopedia", url: "https://es.hispanopedia.com/wiki/Inicio" },
+            { name: "Cervantes", url: "https://www.cervantesvirtual.com/" },
+            { name: "RAE", url: "https://www.rae.es/" },
+            { name: "BNE", url: "https://www.bne.es/" },
+            { name: "Genealogía", url: "https://bghyn.com/" },
+            { name: "Real Academia de la Historia", url: "https://www.rah.es/" }
+          ].map(l => (
+            <p key={l.name}>
+              <a href={l.url} target="_blank" rel="noreferrer">
+                {l.name}
+              </a>
+            </p>
+          ))}
         </div>
-      ))}
+      )}
 
     </div>
-  </div>
-)}
+  );
+}
