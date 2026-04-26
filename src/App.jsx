@@ -89,6 +89,17 @@ export default function App() {
     return true;
   };
 
+  // 🔥 NUEVO: PERMISOS
+  const canEdit = (article) => {
+    if (!user) return false;
+
+    if (role === "owner" || role === "admin") return true;
+
+    if (role === "editor" && article.uid === user.uid) return true;
+
+    return false;
+  };
+
   // ==============================
   // 🔐 AUTENTICACIÓN + ROLES
   // ==============================
@@ -165,10 +176,6 @@ export default function App() {
     })));
   };
 
-  // ==============================
-  // 🔄 CAMBIAR ROL
-  // ==============================
-
   const toggleRole = async (uid, currentRole) => {
     if (uid === ADMIN_UID) {
       alert("❌ No puedes modificar al OWNER");
@@ -185,10 +192,6 @@ export default function App() {
       role: d.data().role
     })));
   };
-
-  // ==============================
-  // 👤 CARGAR USUARIOS
-  // ==============================
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -255,6 +258,11 @@ export default function App() {
   const startEdit = (a) => {
     if (!checkAuth()) return;
 
+    if (!canEdit(a)) {
+      alert("❌ No puedes editar este artículo");
+      return;
+    }
+
     setTitle(a.title);
     setContent(a.content);
     setCategory(a.category);
@@ -263,6 +271,12 @@ export default function App() {
 
   const remove = async (id) => {
     if (!checkAuth()) return;
+
+    const article = articles.find(a => a.id === id);
+    if (!canEdit(article)) {
+      alert("❌ No tienes permiso");
+      return;
+    }
 
     if (!confirm("¿Eliminar este artículo?")) return;
 
@@ -431,7 +445,7 @@ export default function App() {
                 <img src={a.image} style={{ maxWidth: "100%", marginTop: 10 }} />
               )}
 
-              {user && (
+              {user && canEdit(a) && (
                 <div style={{ marginTop: 10 }}>
                   <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
                   <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
