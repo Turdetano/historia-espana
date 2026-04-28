@@ -1,65 +1,87 @@
+// ==============================
+// 📤 API TELEGRAM FINAL ESTABLE
+// ==============================
+
 export default async function handler(req, res) {
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método no permitido" });
   }
 
-  const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
-  const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-
   try {
-    // 🔥 PARSE SEGURO (CLAVE)
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    const { title, content, image } = req.body;
 
-    const { title, content, image } = body;
+    // 🔐 VARIABLES (COMPATIBLES CON TU CONFIG ACTUAL)
+    const BOT_TOKEN = process.env.TELEGRAM_TOKEN;
+    const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-    console.log("DATOS RECIBIDOS:", body);
-
-    // 📸 SI HAY IMAGEN
-    if (image) {
-      const response = await fetch(
-        `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            chat_id: CHAT_ID,
-            photo: image,
-            caption: `📜 ${title}\n\n${content}`
-          })
-        }
-      );
-
-      const data = await response.json();
-      console.log("TELEGRAM FOTO:", data);
-
-      return res.status(200).json(data);
+    if (!BOT_TOKEN || !CHAT_ID) {
+      return res.status(500).json({ error: "Faltan variables de entorno" });
     }
 
-    // 📝 SOLO TEXTO
-    const response = await fetch(
-      `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
-      {
+    // 📝 MENSAJE
+    const message = `
+📜 *${title}*
+
+${content}
+    `;
+
+    // ==============================
+    // 📸 ENVÍO CON IMAGEN
+    // ==============================
+    if (image && image.startsWith("http")) {
+
+      const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
           chat_id: CHAT_ID,
-          text: `📜 ${title}\n\n${content}`
+          photo: image,
+          caption: message,
+          parse_mode: "Markdown"
         })
+      });
+
+      const data = await response.json();
+
+      if (!data.ok) {
+        throw new Error("Error enviando imagen a Telegram");
       }
-    );
 
-    const data = await response.json();
-    console.log("TELEGRAM TEXTO:", data);
+    } else {
 
-    return res.status(200).json(data);
+      // ==============================
+      // 📝 ENVÍO SOLO TEXTO
+      // ==============================
+      const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: message,
+          parse_mode: "Markdown"
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.ok) {
+        throw new Error("Error enviando mensaje a Telegram");
+      }
+    }
+
+    return res.status(200).json({ ok: true });
 
   } catch (error) {
-    console.error("ERROR TELEGRAM:", error);
-    return res.status(500).json({ error: "Fallo interno" });
+    console.error("❌ Telegram error:", error);
+    return res.status(500).json({ error: "Error enviando a Telegram" });
   }
 }
