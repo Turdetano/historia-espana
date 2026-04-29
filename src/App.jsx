@@ -22,7 +22,7 @@ import {
 import { useState, useEffect } from "react";
 
 // ==============================
-// ⚙️ CONFIG
+// ⚙️ CONFIGURACIÓN
 // ==============================
 
 const provider = new GoogleAuthProvider();
@@ -43,46 +43,57 @@ const CATEGORIES = [
 const btnPrimary = {
   background: "#1d4ed8",
   color: "#fff",
-  padding: "10px 16px",
+  padding: "12px 18px",
   borderRadius: 10,
   border: "none",
   cursor: "pointer",
-  fontWeight: "bold",
-  margin: 5
+  marginRight: 10,
+  fontWeight: "bold"
 };
 
 const btnDanger = {
   background: "#b91c1c",
   color: "#fff",
-  padding: "10px 16px",
+  padding: "12px 18px",
   borderRadius: 10,
   border: "none",
   cursor: "pointer",
-  fontWeight: "bold",
-  margin: 5
+  fontWeight: "bold"
 };
 
 // ==============================
-// 🚀 APP
+// 🚀 COMPONENTE PRINCIPAL
 // ==============================
 
 export default function App() {
 
+  // ==============================
+  // 📊 ESTADOS
+  // ==============================
+
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
-  const [users, setUsers] = useState([]);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [editingId, setEditingId] = useState(null);
 
+  // 🧭 NAVEGACIÓN
   const [view, setView] = useState("home");
 
   // ==============================
-  // 🔐 PERMISOS
+  // 🔐 SEGURIDAD
   // ==============================
+
+  const checkAuth = () => {
+    if (!user) {
+      alert("🔒 Debes iniciar sesión");
+      return false;
+    }
+    return true;
+  };
 
   const canEditOrDelete = (article) => {
     if (!user) return false;
@@ -91,7 +102,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🔐 AUTH
+  // 🔐 AUTH + ROLES
   // ==============================
 
   useEffect(() => {
@@ -99,14 +110,24 @@ export default function App() {
       setUser(u);
 
       if (u) {
-        const ref = doc(db, "roles", u.uid);
-        const snap = await getDoc(ref);
+        try {
+          const ref = doc(db, "roles", u.uid);
+          const snap = await getDoc(ref);
 
-        if (u.uid === ADMIN_UID) setRole("owner");
-        else if (snap.exists()) setRole(snap.data().role);
-        else setRole("editor");
+          if (u.uid === ADMIN_UID) {
+            setRole("owner");
+          } else if (snap.exists()) {
+            setRole(snap.data().role);
+          } else {
+            setRole("editor");
+          }
 
-      } else setRole(null);
+        } catch {
+          setRole("editor");
+        }
+      } else {
+        setRole(null);
+      }
     });
 
     return () => unsubscribe();
@@ -116,7 +137,7 @@ export default function App() {
   const logout = () => signOut(auth);
 
   // ==============================
-  // 📚 ARTÍCULOS
+  // 📚 CARGA ARTÍCULOS
   // ==============================
 
   useEffect(() => {
@@ -126,19 +147,26 @@ export default function App() {
   }, []);
 
   // ==============================
-  // 🚀 PUBLICAR
+  // 🚀 PUBLICAR / EDITAR
   // ==============================
 
   const publish = async () => {
-    if (!user) return alert("Debes iniciar sesión");
-    if (!title || !content) return alert("Completa campos");
+    if (!checkAuth()) return;
+
+    if (!title || !content) {
+      alert("❌ Rellena título y contenido");
+      return;
+    }
 
     if (editingId) {
       const article = articles.find(a => a.id === editingId);
+
       if (!canEditOrDelete(article)) return alert("Sin permisos");
 
       await updateDoc(doc(db, "articles", editingId), {
-        title, content, category
+        title,
+        content,
+        category
       });
 
     } else {
@@ -152,51 +180,69 @@ export default function App() {
       });
     }
 
-    const snap = await getDocs(collection(db, "articles"));
-    setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const snapshot = await getDocs(collection(db, "articles"));
+    setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
-    setTitle(""); setContent(""); setEditingId(null);
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setTitle("");
+    setContent("");
+    setEditingId(null);
   };
 
   const startEdit = (a) => {
+    if (!checkAuth()) return;
+
     if (!canEditOrDelete(a)) return alert("Sin permisos");
 
     setTitle(a.title);
     setContent(a.content);
     setCategory(a.category);
     setEditingId(a.id);
-    setView("admin");
+
+    setView("admin"); // 🔥 importante
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const remove = async (id) => {
+    if (!checkAuth()) return;
+
     const article = articles.find(a => a.id === id);
+
     if (!canEditOrDelete(article)) return alert("Sin permisos");
 
-    if (!confirm("¿Eliminar artículo?")) return;
+    if (!confirm("¿Eliminar este artículo?")) return;
 
     await deleteDoc(doc(db, "articles", id));
 
-    const snap = await getDocs(collection(db, "articles"));
-    setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const snapshot = await getDocs(collection(db, "articles"));
+    setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
+  // ==============================
+  // 📤 TELEGRAM
+  // ==============================
+
   const sendToTelegram = async (a) => {
-    if (!(role === "admin" || role === "owner"))
-      return alert("Solo admin");
+    if (!checkAuth()) return;
 
     if (!confirm("¿Enviar a Telegram?")) return;
 
     await fetch("/api/telegram", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify(a)
     });
 
-    alert("Enviado");
+    alert("✅ Enviado");
   };
 
   // ==============================
-  // 🎨 UI
+  // 🎨 INTERFAZ
   // ==============================
 
   return (
@@ -204,10 +250,17 @@ export default function App() {
       background: "#f1f5f9",
       minHeight: "100vh",
       padding: 20,
-      fontFamily: "Segoe UI"
+      fontFamily: "Segoe UI, Arial",
+      color: "#111"
     }}>
 
-      <h1 style={{ textAlign: "center", fontSize: 36 }}>
+      {/* 🏛️ TÍTULO */}
+      <h1 style={{
+        textAlign: "center",
+        fontSize: "36px",
+        fontWeight: "900",
+        color: "#020617"
+      }}>
         📜 Historia de España
       </h1>
 
@@ -216,51 +269,66 @@ export default function App() {
         <button style={btnPrimary} onClick={() => setView("home")}>🏠 Inicio</button>
         <button style={btnPrimary} onClick={() => setView("articles")}>📚 Épocas</button>
         <button style={btnPrimary} onClick={() => setView("links")}>🔗 Enlaces</button>
-        {user && <button style={btnPrimary} onClick={() => setView("admin")}>⚙️ Admin</button>}
+        {user && (
+          <button style={btnPrimary} onClick={() => setView("admin")}>
+            ⚙️ Administración
+          </button>
+        )}
       </div>
 
-      {/* LOGIN */}
+      {/* 🔐 LOGIN */}
       {!user ? (
         <div style={{ textAlign: "center" }}>
-          <button style={btnPrimary} onClick={login}>Iniciar sesión</button>
+          <button onClick={login} style={btnPrimary}>
+            Iniciar sesión
+          </button>
         </div>
       ) : (
         <div style={{ textAlign: "center" }}>
-          <p>{user.email}</p>
-          <button style={btnDanger} onClick={logout}>Cerrar sesión</button>
+          <p>👤 {user.email}</p>
+          <button onClick={logout} style={btnDanger}>
+            Cerrar sesión
+          </button>
         </div>
       )}
 
-      {/* INICIO */}
+      {/* 🏠 INICIO */}
       {view === "home" && (
         <div style={{ textAlign: "center", marginTop: 30 }}>
+          <h2>Bienvenido a Historia de España</h2>
+
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/9/99/Coat_of_Arms_of_Charles_V%2C_Holy_Roman_Emperor.svg"
-            style={{ maxWidth: 200 }}
+            style={{ maxWidth: "220px", marginTop: 20 }}
           />
-          <p>Explora la Historia de España</p>
+
+          <p style={{ marginTop: 20 }}>
+            Explora las épocas y los contenidos históricos.
+          </p>
         </div>
       )}
 
-      {/* ARTÍCULOS */}
+      {/* 📚 ARTÍCULOS */}
       {view === "articles" && CATEGORIES.map(cat => (
         <div key={cat}>
-          <h2 style={{ color: "#1d4ed8" }}>{cat}</h2>
+          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
 
           {articles.filter(a => a.category === cat).map(a => (
             <div key={a.id} style={{
               background: "#fff",
               padding: 15,
-              marginBottom: 10,
+              marginBottom: 15,
               borderRadius: 10
             }}>
               <h3>{a.title}</h3>
               <p>{a.content}</p>
 
-              {a.image && <img src={a.image} style={{ maxWidth: "100%" }} />}
+              {a.image && (
+                <img src={a.image} style={{ maxWidth: "100%", marginTop: 10 }} />
+              )}
 
               {user && (
-                <div>
+                <div style={{ marginTop: 10 }}>
                   <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
                   <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
                   <button onClick={() => sendToTelegram(a)} style={btnPrimary}>Telegram</button>
@@ -271,42 +339,58 @@ export default function App() {
         </div>
       ))}
 
-      {/* ENLACES */}
+      {/* 🔗 ENLACES */}
       {view === "links" && (
-        <div style={{ marginTop: 30 }}>
-          <h2 style={{ fontWeight: "900" }}>🔗 Enlaces de interés</h2>
+        <div style={{ marginTop: 40 }}>
+          <h2 style={{
+            fontWeight: "900",
+            fontSize: "26px",
+            color: "#020617",
+            background: "#e2e8f0",
+            padding: "10px",
+            borderRadius: "8px",
+            display: "inline-block"
+          }}>
+            🔗 Enlaces de interés
+          </h2>
 
-          {[
-            { name: "Biblioteca Cervantes", url: "https://www.cervantesvirtual.com/" },
-            { name: "RAE", url: "https://www.rae.es/" },
-            { name: "BNE", url: "https://www.bne.es/" },
-            { name: "RAH", url: "https://www.rah.es/" },
-            { name: "Genealogía", url: "https://bghyn.com/" }
-          ].map(l => (
-            <p key={l.name}>
-              <a href={l.url} target="_blank" style={{
-                fontWeight: "bold",
-                color: "#1d4ed8"
-              }}>
-                {l.name}
-              </a>
-            </p>
-          ))}
+          <div style={{ marginTop: 15 }}>
+            {[
+              { name: "Hispanopedia", url: "https://es.hispanopedia.com/wiki/Inicio" },
+              { name: "Biblioteca Cervantes", url: "https://www.cervantesvirtual.com/" },
+              { name: "Real Academia Española", url: "https://www.rae.es/" },
+              { name: "Biblioteca Nacional de España", url: "https://www.bne.es/" },
+              { name: "Genealogía", url: "https://bghyn.com/" },
+              { name: "Real Academia de la Historia", url: "https://www.rah.es/" }
+            ].map(link => (
+              <p key={link.name}>
+                <a href={link.url} target="_blank" style={{
+                  fontWeight: "900",
+                  color: "#0f172a",
+                  fontSize: "16px"
+                }}>
+                  {link.name}
+                </a>
+              </p>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* ADMIN */}
+      {/* ⚙️ ADMIN */}
       {user && view === "admin" && (
         <div style={{
-          background: "#fff",
-          padding: 20,
-          borderRadius: 10,
-          marginTop: 20
+          background: "#ffffff",
+          padding: 25,
+          borderRadius: 12,
+          maxWidth: 600,
+          margin: "30px auto",
+          boxShadow: "0 6px 18px rgba(0,0,0,0.2)"
         }}>
-          <h2>Administración</h2>
+          <h2>✍️ Crear artículo</h2>
 
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10 }} />
-          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10 }} />
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
+          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
 
           <select value={category} onChange={e => setCategory(e.target.value)}>
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -315,7 +399,7 @@ export default function App() {
           <br /><br />
 
           <button onClick={publish} style={btnPrimary}>
-            {editingId ? "Guardar cambios" : "Publicar"}
+            {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
           </button>
         </div>
       )}
