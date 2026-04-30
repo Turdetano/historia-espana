@@ -11,7 +11,7 @@ import {
   doc,
   updateDoc,
   getDoc,
-  setDoc
+  setDoc // 🔥 añadido
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -22,7 +22,7 @@ import {
 import { useState, useEffect } from "react";
 
 // ==============================
-// ⚙️ CONFIGURACIÓN
+// ⚙️ CONFIGURACIÓN GENERAL
 // ==============================
 
 const provider = new GoogleAuthProvider();
@@ -37,7 +37,7 @@ const CATEGORIES = [
 ];
 
 // ==============================
-// 🎨 ESTILOS (LOS TUYOS)
+// 🎨 ESTILOS
 // ==============================
 
 const btnPrimary = {
@@ -62,7 +62,7 @@ const btnDanger = {
 };
 
 // ==============================
-// 🚀 APP
+// 🚀 COMPONENTE PRINCIPAL
 // ==============================
 
 export default function App() {
@@ -77,6 +77,18 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
 
   // ==============================
+  // 🔒 SEGURIDAD
+  // ==============================
+
+  const checkAuth = () => {
+    if (!user) {
+      alert("🔒 Debes iniciar sesión");
+      return false;
+    }
+    return true;
+  };
+
+  // ==============================
   // 🔐 AUTH + ROLES
   // ==============================
 
@@ -85,14 +97,20 @@ export default function App() {
       setUser(u);
 
       if (u) {
-        const ref = doc(db, "roles", u.uid);
-        const snap = await getDoc(ref);
+        try {
+          const ref = doc(db, "roles", u.uid);
+          const snap = await getDoc(ref);
 
-        if (u.uid === ADMIN_UID) {
-          setRole("owner");
-        } else if (snap.exists()) {
-          setRole(snap.data().role);
-        } else {
+          if (u.uid === ADMIN_UID) {
+            setRole("owner");
+          } else if (snap.exists()) {
+            setRole(snap.data().role);
+          } else {
+            setRole("editor");
+          }
+
+        } catch (err) {
+          console.error(err);
           setRole("editor");
         }
       } else {
@@ -106,16 +124,8 @@ export default function App() {
   const login = () => signInWithPopup(auth, provider);
   const logout = () => signOut(auth);
 
-  const checkAuth = () => {
-    if (!user) {
-      alert("🔒 Debes iniciar sesión");
-      return false;
-    }
-    return true;
-  };
-
   // ==============================
-  // 👑 CREAR ROLES (ARREGLADO)
+  // 👑 CREAR ROLES (NUEVO - FIX)
   // ==============================
 
   const createRole = async (type) => {
@@ -137,7 +147,7 @@ export default function App() {
   };
 
   // ==============================
-  // 📚 CARGA ARTÍCULOS
+  // 📚 CARGA DE ARTÍCULOS
   // ==============================
 
   useEffect(() => {
@@ -164,13 +174,14 @@ export default function App() {
         content,
         category
       });
+
     } else {
       await addDoc(collection(db, "articles"), {
         title,
         content,
         category,
         date: new Date().toLocaleDateString(),
-        author: user.email,
+        author: user?.email || "Anónimo",
         uid: user.uid
       });
     }
@@ -183,6 +194,10 @@ export default function App() {
     setEditingId(null);
   };
 
+  // ==============================
+  // ✏️ EDITAR
+  // ==============================
+
   const startEdit = (a) => {
     if (!checkAuth()) return;
 
@@ -190,7 +205,12 @@ export default function App() {
     setContent(a.content);
     setCategory(a.category);
     setEditingId(a.id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  // ==============================
+  // 🗑 ELIMINAR
+  // ==============================
 
   const remove = async (id) => {
     if (!checkAuth()) return;
@@ -202,6 +222,10 @@ export default function App() {
     const snapshot = await getDocs(collection(db, "articles"));
     setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
   };
+
+  // ==============================
+  // 📤 TELEGRAM
+  // ==============================
 
   const sendToTelegram = async (a) => {
     if (!checkAuth()) return;
@@ -228,11 +252,10 @@ export default function App() {
       background: "#f1f5f9",
       minHeight: "100vh",
       padding: 20,
-      fontFamily: "Segoe UI",
+      fontFamily: "Segoe UI, Arial",
       color: "#111"
     }}>
 
-      {/* 🏛️ TÍTULO */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
@@ -242,7 +265,6 @@ export default function App() {
         📜 Historia de España
       </h1>
 
-      {/* 🔐 LOGIN */}
       {!user ? (
         <div style={{ textAlign: "center" }}>
           <button onClick={login} style={btnPrimary}>
@@ -262,11 +284,11 @@ export default function App() {
           {role === "owner" && (
             <div style={{ marginTop: 10 }}>
               <button onClick={() => createRole("admin")} style={btnPrimary}>
-                ➕ Admin
+                ➕ Añadir Admin
               </button>
 
               <button onClick={() => createRole("editor")} style={btnPrimary}>
-                ➕ Editor
+                ➕ Añadir Editor
               </button>
             </div>
           )}
@@ -314,10 +336,6 @@ export default function App() {
             }}>
               <h3>{a.title}</h3>
               <p>{a.content}</p>
-
-              {a.image && (
-                <img src={a.image} style={{ maxWidth: "100%", marginTop: 10 }} />
-              )}
 
               {user && (
                 <div style={{ marginTop: 10 }}>
