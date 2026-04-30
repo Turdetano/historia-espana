@@ -37,7 +37,7 @@ const CATEGORIES = [
 ];
 
 // ==============================
-// 🎨 ESTILOS
+// 🎨 ESTILOS (LOS TUYOS)
 // ==============================
 
 const btnPrimary = {
@@ -62,14 +62,10 @@ const btnDanger = {
 };
 
 // ==============================
-// 🚀 COMPONENTE PRINCIPAL
+// 🚀 APP
 // ==============================
 
 export default function App() {
-
-  // ==============================
-  // 📊 ESTADOS
-  // ==============================
 
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
@@ -80,27 +76,6 @@ export default function App() {
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [editingId, setEditingId] = useState(null);
 
-  // 🧭 NAVEGACIÓN
-  const [view, setView] = useState("home");
-
-  // ==============================
-  // 🔐 SEGURIDAD
-  // ==============================
-
-  const checkAuth = () => {
-    if (!user) {
-      alert("🔒 Debes iniciar sesión");
-      return false;
-    }
-    return true;
-  };
-
-  const canEditOrDelete = (article) => {
-    if (!user) return false;
-    if (role === "owner" || role === "admin") return true;
-    return article.uid === user.uid;
-  };
-
   // ==============================
   // 🔐 AUTH + ROLES
   // ==============================
@@ -110,19 +85,14 @@ export default function App() {
       setUser(u);
 
       if (u) {
-        try {
-          const ref = doc(db, "roles", u.uid);
-          const snap = await getDoc(ref);
+        const ref = doc(db, "roles", u.uid);
+        const snap = await getDoc(ref);
 
-          if (u.uid === ADMIN_UID) {
-            setRole("owner");
-          } else if (snap.exists()) {
-            setRole(snap.data().role);
-          } else {
-            setRole("editor");
-          }
-
-        } catch {
+        if (u.uid === ADMIN_UID) {
+          setRole("owner");
+        } else if (snap.exists()) {
+          setRole(snap.data().role);
+        } else {
           setRole("editor");
         }
       } else {
@@ -135,6 +105,36 @@ export default function App() {
 
   const login = () => signInWithPopup(auth, provider);
   const logout = () => signOut(auth);
+
+  const checkAuth = () => {
+    if (!user) {
+      alert("🔒 Debes iniciar sesión");
+      return false;
+    }
+    return true;
+  };
+
+  // ==============================
+  // 👑 CREAR ROLES (ARREGLADO)
+  // ==============================
+
+  const createRole = async (type) => {
+    if (!user || role !== "owner") {
+      alert("❌ Solo el OWNER puede hacer esto");
+      return;
+    }
+
+    const uid = prompt(`Introduce UID del nuevo ${type}`);
+    if (!uid) return;
+
+    try {
+      await setDoc(doc(db, "roles", uid), { role: type });
+      alert(`✅ ${type} creado correctamente`);
+    } catch (e) {
+      console.error(e);
+      alert("❌ Error al crear rol");
+    }
+  };
 
   // ==============================
   // 📚 CARGA ARTÍCULOS
@@ -159,16 +159,11 @@ export default function App() {
     }
 
     if (editingId) {
-      const article = articles.find(a => a.id === editingId);
-
-      if (!canEditOrDelete(article)) return alert("Sin permisos");
-
       await updateDoc(doc(db, "articles", editingId), {
         title,
         content,
         category
       });
-
     } else {
       await addDoc(collection(db, "articles"), {
         title,
@@ -183,10 +178,6 @@ export default function App() {
     const snapshot = await getDocs(collection(db, "articles"));
     setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
-    resetForm();
-  };
-
-  const resetForm = () => {
     setTitle("");
     setContent("");
     setEditingId(null);
@@ -195,23 +186,14 @@ export default function App() {
   const startEdit = (a) => {
     if (!checkAuth()) return;
 
-    if (!canEditOrDelete(a)) return alert("Sin permisos");
-
     setTitle(a.title);
     setContent(a.content);
     setCategory(a.category);
     setEditingId(a.id);
-
-    setView("admin"); // 🔥 importante
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const remove = async (id) => {
     if (!checkAuth()) return;
-
-    const article = articles.find(a => a.id === id);
-
-    if (!canEditOrDelete(article)) return alert("Sin permisos");
 
     if (!confirm("¿Eliminar este artículo?")) return;
 
@@ -220,10 +202,6 @@ export default function App() {
     const snapshot = await getDocs(collection(db, "articles"));
     setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
   };
-
-  // ==============================
-  // 📤 TELEGRAM
-  // ==============================
 
   const sendToTelegram = async (a) => {
     if (!checkAuth()) return;
@@ -242,7 +220,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🎨 INTERFAZ
+  // 🎨 UI
   // ==============================
 
   return (
@@ -250,7 +228,7 @@ export default function App() {
       background: "#f1f5f9",
       minHeight: "100vh",
       padding: 20,
-      fontFamily: "Segoe UI, Arial",
+      fontFamily: "Segoe UI",
       color: "#111"
     }}>
 
@@ -264,18 +242,6 @@ export default function App() {
         📜 Historia de España
       </h1>
 
-      {/* 🧭 MENÚ */}
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <button style={btnPrimary} onClick={() => setView("home")}>🏠 Inicio</button>
-        <button style={btnPrimary} onClick={() => setView("articles")}>📚 Épocas</button>
-        <button style={btnPrimary} onClick={() => setView("links")}>🔗 Enlaces</button>
-        {user && (
-          <button style={btnPrimary} onClick={() => setView("admin")}>
-            ⚙️ Administración
-          </button>
-        )}
-      </div>
-
       {/* 🔐 LOGIN */}
       {!user ? (
         <div style={{ textAlign: "center" }}>
@@ -286,30 +252,56 @@ export default function App() {
       ) : (
         <div style={{ textAlign: "center" }}>
           <p>👤 {user.email}</p>
+          <p>🔑 Rol: {role}</p>
+
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
+          </button>
+
+          {/* 👑 BOTONES OWNER */}
+          {role === "owner" && (
+            <div style={{ marginTop: 10 }}>
+              <button onClick={() => createRole("admin")} style={btnPrimary}>
+                ➕ Admin
+              </button>
+
+              <button onClick={() => createRole("editor")} style={btnPrimary}>
+                ➕ Editor
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ✍️ FORMULARIO */}
+      {user && (
+        <div style={{
+          background: "#ffffff",
+          padding: 25,
+          borderRadius: 12,
+          maxWidth: 600,
+          margin: "30px auto",
+          boxShadow: "0 6px 18px rgba(0,0,0,0.2)"
+        }}>
+          <h2>✍️ Crear artículo</h2>
+
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
+          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
+
+          <select value={category} onChange={e => setCategory(e.target.value)}>
+            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          </select>
+
+          <br /><br />
+
+          <button onClick={publish} style={btnPrimary}>
+            {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
           </button>
         </div>
       )}
 
-      {/* 🏠 INICIO */}
-      {view === "home" && (
-        <div style={{ textAlign: "center", marginTop: 30 }}>
-          <h2>Bienvenido a Historia de España</h2>
-
-          <img
-            src="https://upload.wikimedia.org/wikipedia/commons/9/99/Coat_of_Arms_of_Charles_V%2C_Holy_Roman_Emperor.svg"
-            style={{ maxWidth: "220px", marginTop: 20 }}
-          />
-
-          <p style={{ marginTop: 20 }}>
-            Explora las épocas y los contenidos históricos.
-          </p>
-        </div>
-      )}
-
       {/* 📚 ARTÍCULOS */}
-      {view === "articles" && CATEGORIES.map(cat => (
+      {CATEGORIES.map(cat => (
         <div key={cat}>
           <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
 
@@ -340,69 +332,40 @@ export default function App() {
       ))}
 
       {/* 🔗 ENLACES */}
-      {view === "links" && (
-        <div style={{ marginTop: 40 }}>
-          <h2 style={{
-            fontWeight: "900",
-            fontSize: "26px",
-            color: "#020617",
-            background: "#e2e8f0",
-            padding: "10px",
-            borderRadius: "8px",
-            display: "inline-block"
-          }}>
-            🔗 Enlaces de interés
-          </h2>
-
-          <div style={{ marginTop: 15 }}>
-            {[
-              { name: "Hispanopedia", url: "https://es.hispanopedia.com/wiki/Inicio" },
-              { name: "Biblioteca Cervantes", url: "https://www.cervantesvirtual.com/" },
-              { name: "Real Academia Española", url: "https://www.rae.es/" },
-              { name: "Biblioteca Nacional de España", url: "https://www.bne.es/" },
-              { name: "Genealogía", url: "https://bghyn.com/" },
-              { name: "Real Academia de la Historia", url: "https://www.rah.es/" }
-            ].map(link => (
-              <p key={link.name}>
-                <a href={link.url} target="_blank" style={{
-                  fontWeight: "900",
-                  color: "#0f172a",
-                  fontSize: "16px"
-                }}>
-                  {link.name}
-                </a>
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ⚙️ ADMIN */}
-      {user && view === "admin" && (
-        <div style={{
-          background: "#ffffff",
-          padding: 25,
-          borderRadius: 12,
-          maxWidth: 600,
-          margin: "30px auto",
-          boxShadow: "0 6px 18px rgba(0,0,0,0.2)"
+      <div style={{ marginTop: 40 }}>
+        <h2 style={{
+          fontWeight: "900",
+          fontSize: "26px",
+          color: "#020617",
+          background: "#e2e8f0",
+          padding: "10px",
+          borderRadius: "8px",
+          display: "inline-block"
         }}>
-          <h2>✍️ Crear artículo</h2>
+          🔗 Enlaces de interés
+        </h2>
 
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
-          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
-
-          <select value={category} onChange={e => setCategory(e.target.value)}>
-            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-          </select>
-
-          <br /><br />
-
-          <button onClick={publish} style={btnPrimary}>
-            {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
-          </button>
+        <div style={{ marginTop: 15 }}>
+          {[
+            { name: "Hispanopedia", url: "https://es.hispanopedia.com/wiki/Inicio" },
+            { name: "Biblioteca Cervantes", url: "https://www.cervantesvirtual.com/" },
+            { name: "Real Academia Española", url: "https://www.rae.es/" },
+            { name: "Biblioteca Nacional de España", url: "https://www.bne.es/" },
+            { name: "Genealogía", url: "https://bghyn.com/" },
+            { name: "Real Academia de la Historia", url: "https://www.rah.es/" }
+          ].map(link => (
+            <p key={link.name}>
+              <a href={link.url} target="_blank" style={{
+                fontWeight: "900",
+                color: "#0f172a",
+                fontSize: "16px"
+              }}>
+                {link.name}
+              </a>
+            </p>
+          ))}
         </div>
-      )}
+      </div>
 
     </div>
   );
