@@ -9,9 +9,7 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  updateDoc,
-  getDoc,
-  setDoc
+  updateDoc
 } from "firebase/firestore";
 import {
   signInWithPopup,
@@ -37,7 +35,7 @@ const CATEGORIES = [
 ];
 
 // ==============================
-// 🎨 ESTILOS
+// 🎨 ESTILOS (NO TOCADOS)
 // ==============================
 
 const btnPrimary = {
@@ -62,29 +60,21 @@ const btnDanger = {
 };
 
 // ==============================
-// 🚀 COMPONENTE PRINCIPAL
+// 🚀 APP
 // ==============================
 
 export default function App() {
 
-  // ==============================
-  // 📊 ESTADOS
-  // ==============================
-
   const [articles, setArticles] = useState([]);
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [editingId, setEditingId] = useState(null);
 
-  // 🧭 NAVEGACIÓN
-  const [view, setView] = useState("home");
-
   // ==============================
-  // 🔐 SEGURIDAD
+  // 🔒 SEGURIDAD
   // ==============================
 
   const checkAuth = () => {
@@ -95,41 +85,28 @@ export default function App() {
     return true;
   };
 
+  // ==============================
+  // 🔐 CONTROL DE PERMISOS
+  // ==============================
+
   const canEditOrDelete = (article) => {
     if (!user) return false;
-    if (role === "owner" || role === "admin") return true;
+
+    // ADMIN TOTAL
+    if (user.uid === ADMIN_UID) return true;
+
+    // SOLO AUTOR
     return article.uid === user.uid;
   };
 
   // ==============================
-  // 🔐 AUTH + ROLES
+  // 🔐 AUTH
   // ==============================
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
-
-      if (u) {
-        try {
-          const ref = doc(db, "roles", u.uid);
-          const snap = await getDoc(ref);
-
-          if (u.uid === ADMIN_UID) {
-            setRole("owner");
-          } else if (snap.exists()) {
-            setRole(snap.data().role);
-          } else {
-            setRole("editor");
-          }
-
-        } catch {
-          setRole("editor");
-        }
-      } else {
-        setRole(null);
-      }
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -137,7 +114,7 @@ export default function App() {
   const logout = () => signOut(auth);
 
   // ==============================
-  // 📚 CARGA ARTÍCULOS
+  // 📚 CARGAR ARTÍCULOS
   // ==============================
 
   useEffect(() => {
@@ -159,9 +136,13 @@ export default function App() {
     }
 
     if (editingId) {
+
       const article = articles.find(a => a.id === editingId);
 
-      if (!canEditOrDelete(article)) return alert("Sin permisos");
+      if (!canEditOrDelete(article)) {
+        alert("❌ No tienes permiso");
+        return;
+      }
 
       await updateDoc(doc(db, "articles", editingId), {
         title,
@@ -170,6 +151,7 @@ export default function App() {
       });
 
     } else {
+
       await addDoc(collection(db, "articles"), {
         title,
         content,
@@ -178,40 +160,50 @@ export default function App() {
         author: user.email,
         uid: user.uid
       });
+
     }
 
     const snapshot = await getDocs(collection(db, "articles"));
     setArticles(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
-    resetForm();
-  };
-
-  const resetForm = () => {
     setTitle("");
     setContent("");
     setEditingId(null);
   };
 
+  // ==============================
+  // ✏️ EDITAR
+  // ==============================
+
   const startEdit = (a) => {
     if (!checkAuth()) return;
 
-    if (!canEditOrDelete(a)) return alert("Sin permisos");
+    if (!canEditOrDelete(a)) {
+      alert("❌ No tienes permiso");
+      return;
+    }
 
     setTitle(a.title);
     setContent(a.content);
     setCategory(a.category);
     setEditingId(a.id);
 
-    setView("admin"); // 🔥 importante
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  // ==============================
+  // 🗑 ELIMINAR
+  // ==============================
 
   const remove = async (id) => {
     if (!checkAuth()) return;
 
     const article = articles.find(a => a.id === id);
 
-    if (!canEditOrDelete(article)) return alert("Sin permisos");
+    if (!canEditOrDelete(article)) {
+      alert("❌ No tienes permiso");
+      return;
+    }
 
     if (!confirm("¿Eliminar este artículo?")) return;
 
@@ -228,6 +220,11 @@ export default function App() {
   const sendToTelegram = async (a) => {
     if (!checkAuth()) return;
 
+    if (user.uid !== ADMIN_UID) {
+      alert("❌ Solo el administrador");
+      return;
+    }
+
     if (!confirm("¿Enviar a Telegram?")) return;
 
     await fetch("/api/telegram", {
@@ -242,7 +239,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🎨 INTERFAZ
+  // 🎨 UI (SIN TOCAR)
   // ==============================
 
   return (
@@ -254,7 +251,6 @@ export default function App() {
       color: "#111"
     }}>
 
-      {/* 🏛️ TÍTULO */}
       <h1 style={{
         textAlign: "center",
         fontSize: "36px",
@@ -264,19 +260,6 @@ export default function App() {
         📜 Historia de España
       </h1>
 
-      {/* 🧭 MENÚ */}
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <button style={btnPrimary} onClick={() => setView("home")}>🏠 Inicio</button>
-        <button style={btnPrimary} onClick={() => setView("articles")}>📚 Épocas</button>
-        <button style={btnPrimary} onClick={() => setView("links")}>🔗 Enlaces</button>
-        {user && (
-          <button style={btnPrimary} onClick={() => setView("admin")}>
-            ⚙️ Administración
-          </button>
-        )}
-      </div>
-
-      {/* 🔐 LOGIN */}
       {!user ? (
         <div style={{ textAlign: "center" }}>
           <button onClick={login} style={btnPrimary}>
@@ -286,99 +269,14 @@ export default function App() {
       ) : (
         <div style={{ textAlign: "center" }}>
           <p>👤 {user.email}</p>
+
           <button onClick={logout} style={btnDanger}>
             Cerrar sesión
           </button>
         </div>
       )}
 
-      {/* 🏠 INICIO */}
-      {view === "home" && (
-        <div style={{ textAlign: "center", marginTop: 30 }}>
-          <h2>Bienvenido a Historia de España</h2>
-
-          <img
-            src="https://upload.wikimedia.org/wikipedia/commons/9/99/Coat_of_Arms_of_Charles_V%2C_Holy_Roman_Emperor.svg"
-            style={{ maxWidth: "220px", marginTop: 20 }}
-          />
-
-          <p style={{ marginTop: 20 }}>
-            Explora las épocas y los contenidos históricos.
-          </p>
-        </div>
-      )}
-
-      {/* 📚 ARTÍCULOS */}
-      {view === "articles" && CATEGORIES.map(cat => (
-        <div key={cat}>
-          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
-
-          {articles.filter(a => a.category === cat).map(a => (
-            <div key={a.id} style={{
-              background: "#fff",
-              padding: 15,
-              marginBottom: 15,
-              borderRadius: 10
-            }}>
-              <h3>{a.title}</h3>
-              <p>{a.content}</p>
-
-              {a.image && (
-                <img src={a.image} style={{ maxWidth: "100%", marginTop: 10 }} />
-              )}
-
-              {user && (
-                <div style={{ marginTop: 10 }}>
-                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
-                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
-                  <button onClick={() => sendToTelegram(a)} style={btnPrimary}>Telegram</button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ))}
-
-      {/* 🔗 ENLACES */}
-      {view === "links" && (
-        <div style={{ marginTop: 40 }}>
-          <h2 style={{
-            fontWeight: "900",
-            fontSize: "26px",
-            color: "#020617",
-            background: "#e2e8f0",
-            padding: "10px",
-            borderRadius: "8px",
-            display: "inline-block"
-          }}>
-            🔗 Enlaces de interés
-          </h2>
-
-          <div style={{ marginTop: 15 }}>
-            {[
-              { name: "Hispanopedia", url: "https://es.hispanopedia.com/wiki/Inicio" },
-              { name: "Biblioteca Cervantes", url: "https://www.cervantesvirtual.com/" },
-              { name: "Real Academia Española", url: "https://www.rae.es/" },
-              { name: "Biblioteca Nacional de España", url: "https://www.bne.es/" },
-              { name: "Genealogía", url: "https://bghyn.com/" },
-              { name: "Real Academia de la Historia", url: "https://www.rah.es/" }
-            ].map(link => (
-              <p key={link.name}>
-                <a href={link.url} target="_blank" style={{
-                  fontWeight: "900",
-                  color: "#0f172a",
-                  fontSize: "16px"
-                }}>
-                  {link.name}
-                </a>
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ⚙️ ADMIN */}
-      {user && view === "admin" && (
+      {user && (
         <div style={{
           background: "#ffffff",
           padding: 25,
@@ -403,6 +301,72 @@ export default function App() {
           </button>
         </div>
       )}
+
+      {CATEGORIES.map(cat => (
+        <div key={cat}>
+          <h2 style={{ color: "#1d4ed8" }}>📚 {cat}</h2>
+
+          {articles.filter(a => a.category === cat).map(a => (
+            <div key={a.id} style={{
+              background: "#fff",
+              padding: 15,
+              marginBottom: 15,
+              borderRadius: 10
+            }}>
+              <h3>{a.title}</h3>
+              <p>{a.content}</p>
+
+              {a.image && (
+                <img src={a.image} style={{ maxWidth: "100%", marginTop: 10 }} />
+              )}
+
+              {user && (
+                <div style={{ marginTop: 10 }}>
+                  <button onClick={() => startEdit(a)} style={btnPrimary}>Editar</button>
+                  <button onClick={() => remove(a.id)} style={btnDanger}>Eliminar</button>
+                  <button onClick={() => sendToTelegram(a)} style={btnPrimary}>Telegram</button>
+                </div>
+              )}
+
+            </div>
+          ))}
+        </div>
+      ))}
+
+      <div style={{ marginTop: 40 }}>
+        <h2 style={{
+          fontWeight: "900",
+          fontSize: "26px",
+          color: "#020617",
+          background: "#e2e8f0",
+          padding: "10px",
+          borderRadius: "8px",
+          display: "inline-block"
+        }}>
+          🔗 Enlaces de interés
+        </h2>
+
+        <div style={{ marginTop: 15 }}>
+          {[
+            { name: "Hispanopedia", url: "https://es.hispanopedia.com/wiki/Inicio" },
+            { name: "Biblioteca Cervantes", url: "https://www.cervantesvirtual.com/" },
+            { name: "Real Academia Española", url: "https://www.rae.es/" },
+            { name: "Biblioteca Nacional de España", url: "https://www.bne.es/" },
+            { name: "Genealogía", url: "https://bghyn.com/" },
+            { name: "Real Academia de la Historia", url: "https://www.rah.es/" }
+          ].map(link => (
+            <p key={link.name}>
+              <a href={link.url} target="_blank" style={{
+                fontWeight: "900",
+                color: "#0f172a",
+                fontSize: "16px"
+              }}>
+                {link.name}
+              </a>
+            </p>
+          ))}
+        </div>
+      </div>
 
     </div>
   );
