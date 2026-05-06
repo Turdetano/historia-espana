@@ -4,7 +4,7 @@
 
 import { db, auth } from "./firebase.js";
 import {
-  collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, setDoc, query, where
+  collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, setDoc
 } from "firebase/firestore";
 import {
   signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged
@@ -27,18 +27,185 @@ const CATEGORIES = [
 ];
 
 // ==============================
-// 🎨 ESTILOS
+// 🎨 ESTILOS RESPONSIVE
 // ==============================
 
 const btnPrimary = {
-  background: "#1d4ed8", color: "#fff", padding: "12px 18px", borderRadius: 10,
-  border: "none", cursor: "pointer", marginRight: 10, fontWeight: "bold"
+  background: "#1d4ed8", color: "#fff", padding: "14px 20px", borderRadius: 10,
+  border: "none", cursor: "pointer", marginRight: 10, fontWeight: "bold",
+  fontSize: "16px", minHeight: "48px", touchAction: "manipulation"
 };
 
 const btnDanger = {
-  background: "#b91c1c", color: "#fff", padding: "12px 18px", borderRadius: 10,
-  border: "none", cursor: "pointer", fontWeight: "bold"
+  background: "#b91c1c", color: "#fff", padding: "14px 20px", borderRadius: 10,
+  border: "none", cursor: "pointer", fontWeight: "bold",
+  fontSize: "16px", minHeight: "48px", touchAction: "manipulation"
 };
+
+const btnSecondary = {
+  background: "#475569", color: "#fff", padding: "14px 20px", borderRadius: 10,
+  border: "none", cursor: "pointer", marginRight: 10, fontWeight: "bold",
+  fontSize: "16px", minHeight: "48px", touchAction: "manipulation"
+};
+
+// Estilos responsive con media queries
+const styles = `
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  button {
+    transition: transform 0.1s, opacity 0.2s;
+  }
+  
+  button:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+
+  /* MÓVIL (hasta 640px) */
+  @media (max-width: 640px) {
+    .nav-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: stretch;
+    }
+    
+    .nav-buttons button {
+      width: 100%;
+      margin: 0;
+      padding: 16px 20px;
+      font-size: 16px;
+    }
+    
+    .article-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .article-actions button {
+      width: 100%;
+      margin: 0;
+      padding: 14px 16px;
+    }
+    
+    .user-info-section {
+      padding: 15px !important;
+    }
+    
+    .user-uid-box {
+      flex-direction: column !important;
+      gap: 8px !important;
+    }
+    
+    .user-uid-box code {
+      word-break: break-all;
+      font-size: 12px;
+    }
+    
+    .admin-buttons {
+      flex-direction: column !important;
+      gap: 8px !important;
+    }
+    
+    .admin-buttons button {
+      width: 100% !important;
+      margin: 0 !important;
+    }
+    
+    .user-card {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 12px !important;
+    }
+    
+    .user-card-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .user-card-actions button {
+      width: 100%;
+    }
+    
+    h1 {
+      font-size: 28px !important;
+    }
+    
+    h2 {
+      font-size: 22px !important;
+    }
+    
+    .imperial-title {
+      font-size: 36px !important;
+    }
+    
+    .form-input, .form-textarea, .form-select {
+      font-size: 16px !important; /* Previene zoom en iOS */
+    }
+  }
+
+  /* TABLET (641px - 1024px) */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .nav-buttons {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .nav-buttons button {
+      flex: 1 1 auto;
+      min-width: 120px;
+    }
+    
+    .article-actions {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .article-actions button {
+      flex: 1 1 auto;
+      min-width: 100px;
+    }
+    
+    .user-card {
+      flex-wrap: wrap;
+    }
+    
+    .admin-buttons {
+      flex-wrap: wrap;
+    }
+  }
+
+  /* DESKTOP (más de 1024px) */
+  @media (min-width: 1025px) {
+    .nav-buttons {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      gap: 0;
+    }
+    
+    .nav-buttons button {
+      margin-right: 10px;
+    }
+  }
+
+  /* MEJORAS TÁCTILES GENERALES */
+  @media (hover: none) {
+    button {
+      padding: 16px 20px;
+    }
+    
+    .article-actions button {
+      padding: 14px 16px;
+    }
+  }
+`;
 
 // ==============================
 // 🚀 APP
@@ -69,41 +236,33 @@ export default function App() {
   const [copiedUid, setCopiedUid] = useState(false);
 
   // ==============================
-  // 📝 REGISTRO DE ACTIVIDAD (MEJORADO)
+  // 📝 REGISTRO DE ACTIVIDAD
   // ==============================
   const logActivity = async (type, details = "") => {
     try {
-      console.log("📝 Intentando registrar actividad:", type);
-      const logData = {
+      const logRef = await addDoc(collection(db, "activity_log"), {
         type,
         details,
         userEmail: user?.email || "Sistema",
         userId: user?.uid || "Sistema",
         timestamp: new Date().toISOString()
-      };
-      
-      const logRef = await addDoc(collection(db, "activity_log"), logData);
-      console.log("✅ Log guardado con ID:", logRef.id);
+      });
+      console.log("✅ Log registrado:", logRef.id);
     } catch (err) {
-      console.error("❌ ERROR AL GUARDAR LOG:", err);
+      console.error("❌ Error al registrar:", err);
     }
   };
 
-  // Cargar logs
   useEffect(() => {
     const loadLogs = async () => {
       if (role !== "owner" && role !== "admin") return;
       try {
-        console.log("🔍 Cargando logs...");
         const snap = await getDocs(collection(db, "activity_log"));
-        console.log("📊 Logs encontrados:", snap.size);
-        
         const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        setActivityLogs(logs.slice(0, 50)); // Últimos 50
+        setActivityLogs(logs.slice(0, 50));
       } catch (err) {
-        console.error("❌ Error cargando logs:", err);
+        console.error("Error cargando logs:", err);
       }
     };
     loadLogs();
@@ -126,39 +285,25 @@ export default function App() {
       if (u) {
         try {
           let userRole = null;
-          
-          // 1. Buscar por UID
           const uidRef = doc(db, "roles", u.uid);
           const uidSnap = await getDoc(uidRef);
           if (uidSnap.exists()) {
             userRole = uidSnap.data().role;
-            console.log("✅ Rol encontrado por UID:", userRole);
-          } 
-          // 2. Si no, buscar por Email (y migrar)
-          else if (u.email) {
+          } else if (u.email) {
             const emailRef = doc(db, "roles", u.email);
             const emailSnap = await getDoc(emailRef);
             if (emailSnap.exists()) {
               userRole = emailSnap.data().role;
-              // Migrar a UID
-              await setDoc(uidRef, { 
-                role: userRole, 
-                email: u.email, 
-                migratedAt: new Date().toISOString() 
-              });
+              await setDoc(uidRef, { role: userRole, email: u.email, migratedAt: new Date().toISOString() });
               await deleteDoc(emailRef);
-              console.log("🔄 Rol migrado de Email a UID");
             }
           }
-
-          // 3. Si no tiene rol, crear como lector
           if (!userRole) {
             await setDoc(uidRef, { role: "lector", email: u.email, createdAt: new Date().toISOString() });
             userRole = "lector";
-            logActivity("nuevo_registro", `Usuario registrado como lector: ${u.email}`);
-            alert("👋 Bienvenido. Cuenta creada como LECTOR. Contacta al admin para editar.");
+            logActivity("nuevo_registro", `Usuario registrado: ${u.email}`);
+            alert("👋 Bienvenido. Cuenta creada como LECTOR.");
           }
-
           setRole(userRole);
         } catch (err) {
           console.error("Error auth:", err);
@@ -177,11 +322,7 @@ export default function App() {
   useEffect(() => {
     const loadUsers = async () => {
       const snap = await getDocs(collection(db, "roles"));
-      setUsers(snap.docs.map(d => ({ 
-        uid: d.id, 
-        role: d.data().role, 
-        email: d.data().email || "Sin email"
-      })));
+      setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email || "Sin email" })));
     };
     loadUsers();
   }, []);
@@ -391,10 +532,13 @@ export default function App() {
   // ==============================
   return (
     <div style={{ background: "#f1f5f9", minHeight: "100vh", padding: 20, fontFamily: "Segoe UI, Arial", color: "#111" }}>
+      {/* ESTILOS RESPONSIVE */}
+      <style>{styles}</style>
+      
       <h1 style={{ textAlign: "center", fontSize: "36px", fontWeight: "900", color: "#020617", fontFamily: "Georgia, serif" }}>📜 Historia de España</h1>
 
-      {/* NAVEGACIÓN */}
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
+      {/* NAVEGACIÓN RESPONSIVE */}
+      <div className="nav-buttons" style={{ textAlign: "center", marginBottom: 20 }}>
         <button onClick={() => setView("home")} style={btnPrimary}>🏠 Inicio</button>
         <button onClick={() => setView("articles")} style={btnPrimary}>📚 Artículos</button>
         <button onClick={() => setView("links")} style={btnPrimary}>🔗 Enlaces</button>
@@ -407,10 +551,10 @@ export default function App() {
       {view === "home" && (
         <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
           <div style={{ marginBottom: 30, padding: 20 }}>
-            <img src="https://upload.wikimedia.org/wikipedia/commons/8/8b/Escudo_de_los_Reyes_Catolicos_%281475-1492%29.svg" alt="Escudo" style={{ width: 220, height: 220, objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.3))" }} onError={(e) => { e.target.style.display = 'none'; }} />
+            <img src="https://upload.wikimedia.org/wikipedia/commons/8/8b/Escudo_de_los_Reyes_Catolicos_%281475-1492%29.svg" alt="Escudo" style={{ width: "min(220px, 50vw)", height: "auto", objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.3))" }} onError={(e) => { e.target.style.display = 'none'; }} />
           </div>
           <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #7c2d12 100%)", color: "#fbbf24", padding: "30px 20px", borderRadius: 15, marginBottom: 40, boxShadow: "0 8px 24px rgba(0,0,0,0.3)", border: "3px solid #fbbf24" }}>
-            <h2 style={{ fontSize: "52px", fontWeight: "900", margin: 0, textShadow: "3px 3px 6px rgba(0,0,0,0.5)", letterSpacing: "4px", fontFamily: "Georgia, 'Times New Roman', serif", textTransform: "uppercase" }}>🏛️ HISPANIA IMPERIAL 🏛️</h2>
+            <h2 className="imperial-title" style={{ fontSize: "52px", fontWeight: "900", margin: 0, textShadow: "3px 3px 6px rgba(0,0,0,0.5)", letterSpacing: "4px", fontFamily: "Georgia, 'Times New Roman', serif", textTransform: "uppercase" }}>🏛️ HISPANIA IMPERIAL 🏛️</h2>
             <p style={{ fontSize: "22px", marginTop: 15, fontStyle: "italic", color: "#fef3c7", fontFamily: "Georgia, serif", letterSpacing: "2px" }}>PLUS ULTRA</p>
           </div>
           <div style={{ background: "#fff", padding: 40, borderRadius: 15, marginBottom: 40, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", border: "2px solid #e2e8f0" }}>
@@ -447,7 +591,7 @@ export default function App() {
                     <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{a.content}</p>
                     {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 10, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
                     {user && ((role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid))) && (
-                      <div style={{ marginTop: 10 }}>
+                      <div className="article-actions" style={{ marginTop: 10 }}>
                         <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
                         <button onClick={() => removeArticle(a.id)} style={btnDanger}>🗑️ Eliminar</button>
                         <button onClick={() => sendToTelegram(a)} style={{ ...btnPrimary, background: "#22c55e" }}>📤 Telegram</button>
@@ -477,12 +621,12 @@ export default function App() {
       {/* ⚙️ ADMINISTRACIÓN */}
       {view === "admin" && (role === "owner" || role === "admin") && (
         <div style={{ maxWidth: 900, margin: "30px auto" }}>
-          <div style={{ textAlign: "center", background: "#fff", padding: 15, borderRadius: 10, marginBottom: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+          <div className="user-info-section" style={{ textAlign: "center", background: "#fff", padding: 15, borderRadius: 10, marginBottom: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
             <p style={{ margin: "5px 0", fontWeight: 500 }}>👤 {user?.email}</p>
             <p style={{ margin: "5px 0", color: "#1d4ed8" }}>🔑 Rol: <strong>{role}</strong></p>
-            <div style={{ margin: "10px 0", padding: 8, background: "#f1f5f9", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+            <div className="user-uid-box" style={{ margin: "10px 0", padding: 8, background: "#f1f5f9", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
               <code style={{ fontSize: 11, wordBreak: "break-all" }}>🆔 {user?.uid}</code>
-              <button onClick={copyUidToClipboard} style={{ background: copiedUid ? "#22c55e" : "#64748b", color: "#fff", border: "none", padding: "4px 10px", borderRadius: 4, fontSize: 11, cursor: "pointer", fontWeight: 500 }}>{copiedUid ? "✅ Copiado" : "📋 Copiar"}</button>
+              <button onClick={copyUidToClipboard} style={{ background: copiedUid ? "#22c55e" : "#64748b", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 4, fontSize: 11, cursor: "pointer", fontWeight: 500 }}>{copiedUid ? "✅ Copiado" : "📋 Copiar"}</button>
             </div>
             <button onClick={logout} style={btnDanger}>🚪 Cerrar sesión</button>
           </div>
@@ -490,12 +634,12 @@ export default function App() {
           {/* ✍️ FORMULARIO ARTÍCULOS */}
           <div style={{ background: "#ffffff", padding: 25, borderRadius: 12, maxWidth: 600, margin: "30px auto", boxShadow: "0 6px 18px rgba(0,0,0,0.2)" }}>
             <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>✍️ {editingId ? "Editar artículo" : "Crear artículo"}</h2>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
-            <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10, minHeight: 120 }} />
-            <select value={category} onChange={e => setCategory(e.target.value)} style={{ width: "100%", padding: 10, marginBottom: 10 }}>
+            <input className="form-input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
+            <textarea className="form-textarea" value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10, minHeight: 120 }} />
+            <select className="form-select" value={category} onChange={e => setCategory(e.target.value)} style={{ width: "100%", padding: 10, marginBottom: 10 }}>
               {CATEGORIES.map(c => <option key={c}>{c}</option>)}
             </select>
-            <input value={image} onChange={e => setImage(e.target.value)} placeholder="URL de Cloudinary" style={{ width: "100%", marginBottom: 5, padding: 10 }} />
+            <input className="form-input" value={image} onChange={e => setImage(e.target.value)} placeholder="URL de Cloudinary" style={{ width: "100%", marginBottom: 5, padding: 10 }} />
             {image && <img src={image} style={{ maxWidth: "100%", maxHeight: 150, marginTop: 10, borderRadius: 8, objectFit: "cover" }} alt="Preview" onError={(e) => { e.target.style.display = 'none'; }} />}
             <br /><br />
             <button onClick={publish} style={btnPrimary}>{editingId ? "💾 Guardar cambios" : "🚀 Publicar"}</button>
@@ -505,19 +649,19 @@ export default function App() {
           {/* 👤 GESTIÓN USUARIOS */}
           <div style={{ background: "#fff", padding: 20, marginBottom: 30, borderRadius: 10, marginTop: 30 }}>
             <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>👤 Usuarios del sistema</h2>
-            <div style={{ marginTop: 15, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div className="admin-buttons" style={{ marginTop: 15, display: "flex", gap: 10, flexWrap: "wrap" }}>
               {role === "owner" && <button onClick={makeAdmin} style={btnPrimary}>➕ Admin</button>}
               <button onClick={makeEditor} style={btnPrimary}>➕ Editor</button>
             </div>
             <div style={{ marginTop: 15 }}>
               {users.map(u => (
-                <div key={u.uid} style={{ marginBottom: 10, padding: 10, background: "#f8fafc", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                <div className="user-card" key={u.uid} style={{ marginBottom: 10, padding: 10, background: "#f8fafc", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <p style={{ margin: 0, fontWeight: "bold" }}>📧 {u.email || "Sin email"}</p>
                     <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", wordBreak: "break-all" }}>🆔 {u.uid}</p>
                     <p style={{ margin: "4px 0 0 0", color: "#1d4ed8" }}>🔑 Rol: <strong>{u.role}</strong></p>
                   </div>
-                  <div>
+                  <div className="user-card-actions">
                     <button onClick={() => toggleRole(u.uid, u.role)} style={btnPrimary}>🔄 Cambiar rol</button>
                     <button onClick={() => deleteUserRole(u.uid)} style={btnDanger}>❌ Eliminar</button>
                   </div>
