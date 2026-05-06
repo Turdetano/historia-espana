@@ -4,7 +4,7 @@
 
 import { db, auth } from "./firebase.js";
 import {
-  collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, setDoc
+  collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, setDoc, query, where
 } from "firebase/firestore";
 import {
   signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged
@@ -73,31 +73,34 @@ export default function App() {
   // ==============================
   const logActivity = async (type, details = "") => {
     try {
-      await addDoc(collection(db, "activity_log"), {
+      const logRef = await addDoc(collection(db, "activity_log"), {
         type,
         details,
         userEmail: user?.email || "Sistema",
         userId: user?.uid || "Sistema",
         timestamp: new Date().toISOString()
       });
+      console.log("✅ Actividad registrada:", logRef.id);
     } catch (err) {
-      console.error("Error al registrar actividad:", err);
+      console.error("❌ Error al registrar actividad:", err);
     }
   };
 
-  // 🔄 Carga de logs ordenados en cliente (evita errores de índices en Firestore)
+  // Cargar logs
   useEffect(() => {
     const loadLogs = async () => {
+      if (role !== "owner" && role !== "admin") return;
       try {
         const snap = await getDocs(collection(db, "activity_log"));
         const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         setActivityLogs(logs.slice(0, 50));
+        console.log("📜 Logs cargados:", logs.length);
       } catch (err) {
-        console.error("Error cargando logs:", err);
+        console.error("❌ Error cargando logs:", err);
       }
     };
-    if (role === "owner" || role === "admin") loadLogs();
+    loadLogs();
   }, [role]);
 
   // ==============================
@@ -109,43 +112,65 @@ export default function App() {
   };
 
   // ==============================
-  // 🔐 AUTENTICACIÓN + ROLES (CON AUTO-MIGRACIÓN)
+  // 🔐 AUTENTICACIÓN + ROLES (VERSIÓN ROBUSTA)
   // ==============================
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
+        console.log("🔍 Usuario autenticado:", u.email, u.uid);
         try {
-          let roleData = null;
+          let userRole = null;
+          let roleDoc = null;
+
+          // 1️⃣ Intentar buscar por UID
           const uidRef = doc(db, "roles", u.uid);
           const uidSnap = await getDoc(uidRef);
-
           if (uidSnap.exists()) {
-            roleData = uidSnap.data();
-          } else if (u.email) {
-            // 🔍 Fallback: Buscar si el rol se guardó bajo el correo
+            userRole = uidSnap.data().role;
+            roleDoc = uidSnap.data();
+            console.log("✅ Rol encontrado por UID:", userRole);
+          }
+
+          // 2️⃣ Si no, buscar por email
+          if (!userRole && u.email) {
             const emailRef = doc(db, "roles", u.email);
             const emailSnap = await getDoc(emailRef);
             if (emailSnap.exists()) {
-              roleData = emailSnap.data();
-              // 🔄 Migrar automáticamente al UID correcto
-              await setDoc(uidRef, { ...roleData, migratedFrom: u.email, updatedAt: new Date().toISOString() });
+              userRole = emailSnap.data().role;
+              roleDoc = emailSnap.data();
+              console.log("✅ Rol encontrado por EMAIL:", userRole);
+              
+              // 🔄 MIGRAR AUTOMÁTICAMENTE A UID
+              await setDoc(uidRef, { 
+                role: userRole, 
+                email: u.email, 
+                migratedFrom: u.email,
+                migratedAt: new Date().toISOString()
+              });
               await deleteDoc(emailRef);
-              console.log("✅ Rol migrado de correo a UID correctamente.");
+              console.log("🔄 Rol migrado de email a UID correctamente");
             }
           }
 
-          if (roleData) {
-            setRole(roleData.role);
-          } else {
-            // 🆕 NUEVO USUARIO: Rol por defecto "lector"
-            await setDoc(uidRef, { role: "lector", email: u.email, createdAt: new Date().toISOString() });
-            setRole("lector");
+          // 3️⃣ Si sigue sin tener rol, crear como lector
+          if (!userRole) {
+            await setDoc(uidRef, { 
+              role: "lector", 
+              email: u.email, 
+              createdAt: new Date().toISOString() 
+            });
+            userRole = "lector";
+            console.log("🆕 Nuevo usuario creado como LECTOR");
             logActivity("nuevo_registro", `Usuario registrado como lector: ${u.email}`);
             alert("👋 Bienvenido. Tu cuenta ha sido creada con permisos de lectura. Contacta al administrador para solicitar edición.");
           }
+
+          setRole(userRole);
+          console.log(" Rol final asignado:", userRole);
+
         } catch (err) {
-          console.error("Error verificando rol:", err);
+          console.error("❌ Error verificando rol:", err);
           setRole("lector");
         }
       } else {
@@ -161,11 +186,13 @@ export default function App() {
   useEffect(() => {
     const loadUsers = async () => {
       const snap = await getDocs(collection(db, "roles"));
-      setUsers(snap.docs.map(d => ({ 
+      const userList = snap.docs.map(d => ({ 
         uid: d.id, 
         role: d.data().role, 
-        email: d.data().email || d.id // Si no hay email guardado, muestra el ID del doc
-      })));
+        email: d.data().email || (d.id.includes("@") ? d.id : "No disponible")
+      }));
+      setUsers(userList);
+      console.log("👥 Usuarios cargados:", userList.length);
     };
     loadUsers();
   }, []);
@@ -219,7 +246,7 @@ export default function App() {
     if (!target) return;
     await setDoc(doc(db, "roles", target), { role: "admin", updatedAt: new Date().toISOString() });
     logActivity("rol_asignado", `${target} ascendido a ADMIN`);
-    alert("✅ Administrador asignado. El usuario verá los cambios al recargar.");
+    alert("✅ Administrador asignado. El usuario debe cerrar sesión y volver a entrar para ver los cambios.");
     const snap = await getDocs(collection(db, "roles"));
     setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email || d.id })));
   };
@@ -230,7 +257,7 @@ export default function App() {
     if (!target) return;
     await setDoc(doc(db, "roles", target), { role: "editor", updatedAt: new Date().toISOString() });
     logActivity("rol_asignado", `${target} ascendido a EDITOR`);
-    alert("✅ Editor asignado. El usuario verá los cambios al recargar.");
+    alert("✅ Editor asignado. El usuario debe cerrar sesión y volver a entrar para ver los cambios.");
     const snap = await getDocs(collection(db, "roles"));
     setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email || d.id })));
   };
