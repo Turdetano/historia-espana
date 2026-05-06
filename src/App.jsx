@@ -4,7 +4,7 @@
 
 import { db, auth } from "./firebase.js";
 import {
-  collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, setDoc
+  collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, setDoc, query, orderBy, limit
 } from "firebase/firestore";
 import {
   signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged
@@ -40,6 +40,11 @@ const btnDanger = {
   border: "none", cursor: "pointer", fontWeight: "bold"
 };
 
+const btnSecondary = {
+  background: "#475569", color: "#fff", padding: "12px 18px", borderRadius: 10,
+  border: "none", cursor: "pointer", marginRight: 10, fontWeight: "bold"
+};
+
 // ==============================
 // 🚀 APP
 // ==============================
@@ -50,6 +55,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [users, setUsers] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
   
   // Estados para artículos
   const [title, setTitle] = useState("");
@@ -66,6 +72,32 @@ export default function App() {
   
   // Estado para feedback de copiar UID
   const [copiedUid, setCopiedUid] = useState(false);
+
+  // ==============================
+  // 📝 REGISTRO DE ACTIVIDAD
+  // ==============================
+  const logActivity = async (type, details = "") => {
+    try {
+      await addDoc(collection(db, "activity_log"), {
+        type,
+        details,
+        userEmail: user?.email || "Sistema",
+        userId: user?.uid || "Sistema",
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error("Error al registrar actividad:", err);
+    }
+  };
+
+  useEffect(() => {
+    const loadLogs = async () => {
+      const q = query(collection(db, "activity_log"), orderBy("timestamp", "desc"), limit(50));
+      const snap = await getDocs(q);
+      setActivityLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    };
+    if (role === "owner" || role === "admin") loadLogs();
+  }, [role]);
 
   // ==============================
   // 🔒 SEGURIDAD
@@ -85,8 +117,16 @@ export default function App() {
         try {
           const ref = doc(db, "roles", u.uid);
           const snap = await getDoc(ref);
-          setRole(u.uid === ADMIN_UID ? "owner" : (snap.exists() ? snap.data().role : "editor"));
-        } catch { setRole("editor"); }
+          if (snap.exists()) {
+            setRole(snap.data().role);
+          } else {
+            // 🆕 NUEVO USUARIO: Rol por defecto "lector"
+            await setDoc(ref, { role: "lector", email: u.email, createdAt: new Date().toISOString() });
+            setRole("lector");
+            logActivity("nuevo_registro", `Usuario registrado como lector: ${u.email}`);
+            alert("👋 Bienvenido. Tu cuenta ha sido creada con permisos de lectura. Contacta al administrador para solicitar edición.");
+          }
+        } catch { setRole("lector"); }
       } else { setRole(null); }
     });
     return () => unsubscribe();
@@ -98,7 +138,7 @@ export default function App() {
   useEffect(() => {
     const loadUsers = async () => {
       const snap = await getDocs(collection(db, "roles"));
-      setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role })));
+      setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email })));
     };
     loadUsers();
   }, []);
@@ -147,33 +187,39 @@ export default function App() {
   // 👑 ROLES
   // ==============================
   const makeAdmin = async () => {
+    if (role !== "owner") return alert("❌ Solo el OWNER puede asignar administradores");
     const uid = prompt("UID del nuevo ADMIN:");
     if (!uid) return;
-    await setDoc(doc(db, "roles", uid), { role: "admin" });
-    alert("✅ Administrador añadido");
+    await setDoc(doc(db, "roles", uid), { role: "admin", updatedAt: new Date().toISOString() });
+    logActivity("rol_asignado", `${uid} ascendido a ADMIN`);
+    alert("✅ Administrador asignado. Notificación registrada.");
   };
 
   const makeEditor = async () => {
+    if (role !== "owner" && role !== "admin") return alert("❌ No tienes permisos");
     const uid = prompt("UID del nuevo EDITOR:");
     if (!uid) return;
-    await setDoc(doc(db, "roles", uid), { role: "editor" });
-    alert("✅ Editor añadido");
+    await setDoc(doc(db, "roles", uid), { role: "editor", updatedAt: new Date().toISOString() });
+    logActivity("rol_asignado", `${uid} ascendido a EDITOR`);
+    alert("✅ Editor asignado. Notificación registrada.");
   };
 
   const deleteUserRole = async (uid) => {
     if (uid === ADMIN_UID) return alert("❌ No puedes eliminar al OWNER");
     if (!confirm("¿Eliminar este usuario?")) return;
     await deleteDoc(doc(db, "roles", uid));
+    logActivity("usuario_eliminado", `Usuario ${uid} eliminado del sistema`);
     const snap = await getDocs(collection(db, "roles"));
-    setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role })));
+    setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email })));
   };
 
   const toggleRole = async (uid, currentRole) => {
     if (uid === ADMIN_UID) return alert("❌ No puedes modificar al OWNER");
     const newRole = currentRole === "admin" ? "editor" : "admin";
-    await setDoc(doc(db, "roles", uid), { role: newRole });
+    await setDoc(doc(db, "roles", uid), { role: newRole, updatedAt: new Date().toISOString() });
+    logActivity("rol_cambiado", `Usuario ${uid} cambiado a ${newRole.toUpperCase()}`);
     const snap = await getDocs(collection(db, "roles"));
-    setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role })));
+    setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email })));
   };
 
   // ==============================
@@ -184,10 +230,11 @@ export default function App() {
     if (!title || !content) return alert("❌ Rellena título y contenido");
     
     const imageUrl = image || "";
+    const actionType = editingId ? "articulo_actualizado" : "articulo_creado";
     
     if (editingId) {
       await updateDoc(doc(db, "articles", editingId), {
-        title, content, category, image: imageUrl
+        title, content, category, image: imageUrl, updatedAt: new Date().toISOString()
       });
     } else {
       await addDoc(collection(db, "articles"), {
@@ -195,44 +242,63 @@ export default function App() {
         image: imageUrl,
         date: new Date().toLocaleDateString(),
         author: user.email,
-        authorId: user.uid
+        authorId: user.uid,
+        createdAt: new Date().toISOString()
       });
     }
+    
+    logActivity(actionType, `"${title}" por ${user.email}`);
     
     const snap = await getDocs(collection(db, "articles"));
     setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     setTitle(""); setContent(""); setImage(""); setEditingId(null);
   };
 
-  // ✅ CORREGIDO: Ahora redirige a "admin" en lugar de "home"
   const startEdit = (a) => {
     if (!checkAuth()) return;
+    // 🛡️ Verificar permisos de editor
+    if (role === "editor" && a.authorId !== user.uid) {
+      return alert("❌ Solo puedes editar tus propios artículos");
+    }
     setTitle(a.title);
     setContent(a.content);
     setCategory(a.category);
     setImage(a.image || "");
     setEditingId(a.id);
-    setView("admin"); // ← CAMBIADO de "home" a "admin"
+    setView("admin");
   };
 
   const removeArticle = async (id) => {
     if (!checkAuth()) return;
+    const article = articles.find(a => a.id === id);
+    if (role === "editor" && article?.authorId !== user.uid) {
+      return alert("❌ Solo puedes eliminar tus propios artículos");
+    }
     if (!confirm("¿Eliminar este artículo?")) return;
     await deleteDoc(doc(db, "articles", id));
+    logActivity("articulo_eliminado", `"${article?.title}" eliminado por ${user.email}`);
     const snap = await getDocs(collection(db, "articles"));
     setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
-  // 📤 ENVÍO COMPLETO A TELEGRAM
+  // 📤 ENVÍO A TELEGRAM + ANTI-SPAM
   const sendToTelegram = async (a) => {
     if (!checkAuth()) return;
+    
+    // 🛡️ ANTI-SPAM: Cooldown de 5 minutos por usuario
+    const lastSend = localStorage.getItem(`tg_cooldown_${user.uid}`);
+    if (lastSend && (Date.now() - parseInt(lastSend)) < 300000) {
+      const waitSec = Math.ceil((300000 - (Date.now() - parseInt(lastSend))) / 1000);
+      return alert(`⏳ Anti-Spam activo: Espera ${waitSec} segundos antes de enviar otro mensaje a Telegram.`);
+    }
+
     if (!confirm("¿Enviar este artículo COMPLETO a Telegram?")) return;
 
     const BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
     const CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
 
     if (!BOT_TOKEN || !CHAT_ID) {
-      alert("⚠️ Faltan credenciales. Verifica el archivo .env");
+      alert("⚠️ Faltan credenciales de Telegram. Contacta al administrador.");
       return;
     }
 
@@ -262,9 +328,7 @@ export default function App() {
           })
         });
         const photoData = await photoResponse.json();
-        if (!photoData.ok) {
-          console.warn("⚠️ No se pudo enviar la imagen:", photoData.description);
-        }
+        if (!photoData.ok) console.warn("⚠️ No se pudo enviar la imagen:", photoData.description);
       }
 
       const fullContent = header + safeContent + `\n\n🔗 Ver en la web: ${window.location.origin}`;
@@ -289,7 +353,10 @@ export default function App() {
         if (!data.ok) throw new Error(data.description || "Error al enviar mensaje");
       }
 
-      alert(`✅ Artículo enviado correctamente (${chunks.length} mensaje${chunks.length > 1 ? 's' : ''})`);
+      // ✅ Activar cooldown y loguear
+      localStorage.setItem(`tg_cooldown_${user.uid}`, Date.now().toString());
+      logActivity("telegram_enviado", `"${a.title}" enviado a canal por ${user.email}`);
+      alert(`✅ Artículo enviado correctamente (${chunks.length} mensaje${chunks.length > 1 ? 's' : ''}). Cooldown activado: 5 min.`);
 
     } catch (err) {
       console.error("❌ Error en Telegram:", err);
@@ -302,7 +369,8 @@ export default function App() {
   // ==============================
   const addLink = async () => {
     if (!newLinkName || !newLinkUrl) return alert("Rellena nombre y URL");
-    await addDoc(collection(db, "links"), { name: newLinkName, url: newLinkUrl });
+    await addDoc(collection(db, "links"), { name: newLinkName, url: newLinkUrl, createdAt: new Date().toISOString() });
+    logActivity("enlace_creado", `"${newLinkName}" añadido por ${user.email}`);
     setNewLinkName(""); setNewLinkUrl("");
     const snap = await getDocs(collection(db, "links"));
     setLinks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -311,6 +379,7 @@ export default function App() {
   const removeLink = async (id) => {
     if (!confirm("¿Eliminar este enlace?")) return;
     await deleteDoc(doc(db, "links", id));
+    logActivity("enlace_eliminado", `Enlace ID ${id} eliminado por ${user.email}`);
     const snap = await getDocs(collection(db, "links"));
     setLinks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
@@ -340,125 +409,37 @@ export default function App() {
       {/* 🏠 INICIO: PORTADA IMPERIAL */}
       {view === "home" && (
         <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
-          
-          {/* ESCUDO IMPERIAL - Reyes Católicos */}
           <div style={{ marginBottom: 30, padding: 20 }}>
             <img 
               src="https://upload.wikimedia.org/wikipedia/commons/8/8b/Escudo_de_los_Reyes_Catolicos_%281475-1492%29.svg"
               alt="Escudo de Hispania Imperial"
-              style={{
-                width: 220,
-                height: 220,
-                objectFit: "contain",
-                filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.3))"
-              }}
-              onError={(e) => {
-                e.target.alt = "⚠️ Escudo no cargado";
-                e.target.style.display = 'none';
-              }}
+              style={{ width: 220, height: 220, objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.3))" }}
+              onError={(e) => { e.target.alt = "⚠️ Escudo no cargado"; e.target.style.display = 'none'; }}
             />
           </div>
-
-          {/* LEMA IMPERIAL */}
           <div style={{
             background: "linear-gradient(135deg, #1e3a8a 0%, #7c2d12 100%)",
-            color: "#fbbf24",
-            padding: "30px 20px",
-            borderRadius: 15,
-            marginBottom: 40,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
-            border: "3px solid #fbbf24"
+            color: "#fbbf24", padding: "30px 20px", borderRadius: 15, marginBottom: 40,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.3)", border: "3px solid #fbbf24"
           }}>
-            <h2 style={{
-              fontSize: "52px",
-              fontWeight: "900",
-              margin: 0,
-              textShadow: "3px 3px 6px rgba(0,0,0,0.5)",
-              letterSpacing: "4px",
-              fontFamily: "Georgia, 'Times New Roman', serif",
-              textTransform: "uppercase"
-            }}>
+            <h2 style={{ fontSize: "52px", fontWeight: "900", margin: 0, textShadow: "3px 3px 6px rgba(0,0,0,0.5)", letterSpacing: "4px", fontFamily: "Georgia, 'Times New Roman', serif", textTransform: "uppercase" }}>
               🏛️ HISPANIA IMPERIAL 🏛️
             </h2>
-            <p style={{
-              fontSize: "22px",
-              marginTop: 15,
-              fontStyle: "italic",
-              color: "#fef3c7",
-              fontFamily: "Georgia, serif",
-              letterSpacing: "2px"
-            }}>
-              PLUS ULTRA
-            </p>
+            <p style={{ fontSize: "22px", marginTop: 15, fontStyle: "italic", color: "#fef3c7", fontFamily: "Georgia, serif", letterSpacing: "2px" }}>PLUS ULTRA</p>
           </div>
-
-          {/* POEMA DE JORGE DORÉ */}
-          <div style={{
-            background: "#fff",
-            padding: 40,
-            borderRadius: 15,
-            marginBottom: 40,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-            border: "2px solid #e2e8f0"
-          }}>
-            <h3 style={{
-              fontSize: "24px",
-              color: "#1e3a8a",
-              marginBottom: 25,
-              fontWeight: "700",
-              borderBottom: "2px solid #fbbf24",
-              paddingBottom: 10,
-              fontFamily: "Georgia, serif"
-            }}>
-              📜 España - Jorge Doré
-            </h3>
-            
-            <div style={{
-              fontSize: "16px",
-              lineHeight: 2.2,
-              color: "#334155",
-              fontStyle: "italic",
-              whiteSpace: "pre-line",
-              fontFamily: "Georgia, serif"
-            }}>
-              <p style={{ margin: "15px 0", fontWeight: "600" }}>
-                ¡Qué triste España y qué amargo,<br />
-                es ver como te debates<br />
-                a vida o muerte entre turbas<br />
-                de apóstatas y desleales!
-              </p>
-              
-              <p style={{ margin: "15px 0", fontWeight: "600" }}>
-                ¡Qué lamentable cortejo<br />
-                de alimañas insaciables<br />
-                te timonea escorada...
-              </p>
+          <div style={{ background: "#fff", padding: 40, borderRadius: 15, marginBottom: 40, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", border: "2px solid #e2e8f0" }}>
+            <h3 style={{ fontSize: "24px", color: "#1e3a8a", marginBottom: 25, fontWeight: "700", borderBottom: "2px solid #fbbf24", paddingBottom: 10, fontFamily: "Georgia, serif" }}>📜 España - Jorge Doré</h3>
+            <div style={{ fontSize: "16px", lineHeight: 2.2, color: "#334155", fontStyle: "italic", whiteSpace: "pre-line", fontFamily: "Georgia, serif" }}>
+              <p style={{ margin: "15px 0", fontWeight: "600" }}>¡Qué triste España y qué amargo,<br />es ver como te debates<br />a vida o muerte entre turbas<br />de apóstatas y desleales!</p>
+              <p style={{ margin: "15px 0", fontWeight: "600" }}>¡Qué lamentable cortejo<br />de alimañas insaciables<br />te timonea escorada...</p>
             </div>
           </div>
-
-          {/* BOTÓN DE ACCIÓN */}
           <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <button 
-              onClick={() => setView("articles")}
-              style={{
-                ...btnPrimary,
-                fontSize: "18px",
-                padding: "15px 30px",
-                background: "linear-gradient(135deg, #1e3a8a 0%, #7c2d12 100%)",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                border: "2px solid #fbbf24"
-              }}
-            >
-              📚 Explorar la Historia de España
-            </button>
+            <button onClick={() => setView("articles")} style={{...btnPrimary, fontSize: "18px", padding: "15px 30px", background: "linear-gradient(135deg, #1e3a8a 0%, #7c2d12 100%)", boxShadow: "0 4px 12px rgba(0,0,0,0.2)", border: "2px solid #fbbf24" }}>📚 Explorar la Historia de España</button>
           </div>
-
-          {/* MENSAJE PARA VISITANTES (sin login) */}
           {!user && (
             <div style={{ textAlign: "center", marginTop: 40 }}>
-              <p style={{ color: "#64748b", marginBottom: 15 }}>
-                Para crear o editar artículos, inicia sesión
-              </p>
+              <p style={{ color: "#64748b", marginBottom: 15 }}>Para crear o editar artículos, inicia sesión</p>
               <button onClick={login} style={btnPrimary}>🔐 Iniciar sesión</button>
             </div>
           )}
@@ -480,13 +461,15 @@ export default function App() {
                     <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{a.content}</p>
                     {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 10, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
                     
-                    {/* BOTONES SOLO PARA USUARIOS AUTENTICADOS (SEGURIDAD) */}
+                    {/* 🛡️ PERMISOS POR ROL */}
                     {user && (
-                      <div style={{ marginTop: 10 }}>
-                        <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
-                        <button onClick={() => removeArticle(a.id)} style={btnDanger}>🗑️ Eliminar</button>
-                        <button onClick={() => sendToTelegram(a)} style={{ ...btnPrimary, background: "#22c55e" }}>📤 Telegram</button>
-                      </div>
+                      (role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid)) && (
+                        <div style={{ marginTop: 10 }}>
+                          <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
+                          <button onClick={() => removeArticle(a.id)} style={btnDanger}>🗑️ Eliminar</button>
+                          <button onClick={() => sendToTelegram(a)} style={{ ...btnPrimary, background: "#22c55e" }}>📤 Telegram</button>
+                        </div>
+                      )
                     )}
                   </div>
                 ))}
@@ -500,110 +483,48 @@ export default function App() {
       {/* 🔗 ENLACES: Solo lista limpia */}
       {view === "links" && (
         <div style={{ marginTop: 40, maxWidth: 800, margin: "40px auto" }}>
-          <h2 style={{ fontWeight: "900", fontSize: "26px", color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontFamily: "Georgia, serif" }}>
-            🔗 Enlaces de interés
-          </h2>
+          <h2 style={{ fontWeight: "900", fontSize: "26px", color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontFamily: "Georgia, serif" }}>🔗 Enlaces de interés</h2>
           <div style={{ marginTop: 20, display: "grid", gap: 15 }}>
             {links.length > 0 ? links.map(link => (
-              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={{
-                display: "block", padding: 15, background: "#fff", borderRadius: 10,
-                fontWeight: "700", color: "#0f172a", textDecoration: "none",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)", transition: "transform 0.2s",
-                fontFamily: "Georgia, serif"
-              }}>
-                🔗 {link.name}
-              </a>
-            )) : (
-              <p style={{ textAlign: "center", color: "#64748b" }}>No hay enlaces disponibles.</p>
-            )}
+              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", padding: 15, background: "#fff", borderRadius: 10, fontWeight: "700", color: "#0f172a", textDecoration: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", transition: "transform 0.2s", fontFamily: "Georgia, serif" }}>🔗 {link.name}</a>
+            )) : <p style={{ textAlign: "center", color: "#64748b" }}>No hay enlaces disponibles.</p>}
           </div>
         </div>
       )}
 
-      {/* ⚙️ ADMINISTRACIÓN: Usuarios + Gestión de Enlaces + INFO DE USUARIO + FORMULARIO ARTÍCULOS */}
+      {/* ⚙️ ADMINISTRACIÓN */}
       {view === "admin" && (role === "owner" || role === "admin") && (
-        <div style={{ maxWidth: 800, margin: "30px auto" }}>
-          
-          {/* 👤 SECCIÓN DE USUARIO (SOLO VISIBLE EN ADMIN) */}
-          <div style={{ 
-            textAlign: "center", 
-            background: "#fff", 
-            padding: 15, 
-            borderRadius: 10,
-            marginBottom: 20,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-          }}>
+        <div style={{ maxWidth: 900, margin: "30px auto" }}>
+          <div style={{ textAlign: "center", background: "#fff", padding: 15, borderRadius: 10, marginBottom: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
             <p style={{ margin: "5px 0", fontWeight: 500 }}>👤 {user?.email}</p>
             <p style={{ margin: "5px 0", color: "#1d4ed8" }}>🔑 Rol: <strong>{role}</strong></p>
-            <div style={{ 
-              margin: "10px 0", padding: 8, background: "#f1f5f9", borderRadius: 6,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap"
-            }}>
+            <div style={{ margin: "10px 0", padding: 8, background: "#f1f5f9", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
               <code style={{ fontSize: 11, wordBreak: "break-all" }}>🆔 {user?.uid}</code>
-              <button 
-                onClick={copyUidToClipboard}
-                style={{
-                  background: copiedUid ? "#22c55e" : "#64748b",
-                  color: "#fff", border: "none", padding: "4px 10px",
-                  borderRadius: 4, fontSize: 11, cursor: "pointer", fontWeight: 500
-                }}
-              >
-                {copiedUid ? "✅ Copiado" : "📋 Copiar"}
-              </button>
+              <button onClick={copyUidToClipboard} style={{ background: copiedUid ? "#22c55e" : "#64748b", color: "#fff", border: "none", padding: "4px 10px", borderRadius: 4, fontSize: 11, cursor: "pointer", fontWeight: 500 }}>{copiedUid ? "✅ Copiado" : "📋 Copiar"}</button>
             </div>
             <button onClick={logout} style={btnDanger}>🚪 Cerrar sesión</button>
           </div>
 
-          {/* ✍️ FORMULARIO CREAR/EDITAR ARTÍCULO (MOVIDO DESDE INICIO) */}
-          <div style={{
-            background: "#ffffff", padding: 25, borderRadius: 12, maxWidth: 600,
-            margin: "30px auto", boxShadow: "0 6px 18px rgba(0,0,0,0.2)"
-          }}>
-            <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>
-              ✍️ {editingId ? "Editar artículo" : "Crear artículo"}
-            </h2>
+          {/* ✍️ FORMULARIO ARTÍCULOS */}
+          <div style={{ background: "#ffffff", padding: 25, borderRadius: 12, maxWidth: 600, margin: "30px auto", boxShadow: "0 6px 18px rgba(0,0,0,0.2)" }}>
+            <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>✍️ {editingId ? "Editar artículo" : "Crear artículo"}</h2>
             <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={{ width: "100%", marginBottom: 10, padding: 10 }} />
             <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{ width: "100%", marginBottom: 10, padding: 10, minHeight: 120 }} />
             <select value={category} onChange={e => setCategory(e.target.value)} style={{ width: "100%", padding: 10, marginBottom: 10 }}>
               {CATEGORIES.map(c => <option key={c}>{c}</option>)}
             </select>
-            
-            <input 
-              value={image} 
-              onChange={e => setImage(e.target.value)} 
-              placeholder="Pega aquí la URL de Cloudinary (https://res.cloudinary.com/...)" 
-              style={{ width: "100%", marginBottom: 5, padding: 10 }} 
-            />
-            <small style={{ color: "#64748b", display: "block", marginBottom: 10 }}>
-              💡 Sube tu imagen a <a href="https://cloudinary.com/console/media_library" target="_blank" rel="noopener noreferrer" style={{color:"#1d4ed8"}}>Cloudinary</a> y pega el enlace directo aquí.
-            </small>
-            
-            {image && (
-              <img 
-                src={image} 
-                alt="Vista previa" 
-                style={{ maxWidth: "100%", maxHeight: 150, marginTop: 10, borderRadius: 8, objectFit: "cover", border: "1px solid #e2e8f0" }} 
-                onError={(e) => { e.target.style.display = 'none'; }} 
-              />
-            )}
-            
+            <input value={image} onChange={e => setImage(e.target.value)} placeholder="Pega aquí la URL de Cloudinary" style={{ width: "100%", marginBottom: 5, padding: 10 }} />
+            <small style={{ color: "#64748b", display: "block", marginBottom: 10 }}>💡 Sube tu imagen a Cloudinary y pega el enlace directo aquí.</small>
+            {image && <img src={image} style={{ maxWidth: "100%", maxHeight: 150, marginTop: 10, borderRadius: 8, objectFit: "cover", border: "1px solid #e2e8f0" }} alt="Preview" onError={(e) => { e.target.style.display = 'none'; }} />}
             <br /><br />
-            <button onClick={publish} style={btnPrimary}>
-              {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
-            </button>
-            {editingId && (
-              <button onClick={() => { setEditingId(null); setTitle(""); setContent(""); setImage(""); }} style={{ ...btnDanger, marginLeft: 10 }}>
-                Cancelar
-              </button>
-            )}
+            <button onClick={publish} style={btnPrimary}>{editingId ? "💾 Guardar cambios" : "🚀 Publicar"}</button>
+            {editingId && <button onClick={() => { setEditingId(null); setTitle(""); setContent(""); setImage(""); }} style={{ ...btnDanger, marginLeft: 10 }}>Cancelar</button>}
           </div>
 
-          {/* 👤 GESTIÓN DE USUARIOS (Solo Owner) */}
+          {/* 👤 GESTIÓN USUARIOS */}
           {role === "owner" && (
             <div style={{ background: "#fff", padding: 20, marginBottom: 30, borderRadius: 10, marginTop: 30 }}>
-              <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>
-                👤 Usuarios del sistema
-              </h2>
+              <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>👤 Usuarios del sistema</h2>
               <div style={{ marginTop: 15, display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button onClick={makeAdmin} style={btnPrimary}>➕ Admin</button>
                 <button onClick={makeEditor} style={btnPrimary}>➕ Editor</button>
@@ -613,6 +534,7 @@ export default function App() {
                   <div key={u.uid} style={{ marginBottom: 10, padding: 10, background: "#f8fafc", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <p style={{ margin: 0 }}><strong>UID:</strong> {u.uid}</p>
+                      <p style={{ margin: 0 }}><strong>Email:</strong> {u.email || "N/A"}</p>
                       <p style={{ margin: 0 }}><strong>Rol:</strong> {u.role}</p>
                     </div>
                     <div>
@@ -625,11 +547,9 @@ export default function App() {
             </div>
           )}
 
-          {/* 🔧 GESTIÓN DE ENLACES (Owner / Admin) */}
+          {/* 🔧 GESTIÓN ENLACES */}
           <div style={{ background: "#fff", padding: 20, borderRadius: 10 }}>
-            <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>
-              🔧 Gestionar Enlaces
-            </h2>
+            <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>🔧 Gestionar Enlaces</h2>
             <div style={{ marginTop: 15, display: "flex", gap: 10, flexWrap: "wrap" }}>
               <input value={newLinkName} onChange={e => setNewLinkName(e.target.value)} placeholder="Nombre del sitio" style={{ flex: 1, padding: 10, borderRadius: 6, border: "1px solid #cbd5e1" }} />
               <input value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} placeholder="https://..." style={{ flex: 2, padding: 10, borderRadius: 6, border: "1px solid #cbd5e1" }} />
@@ -642,6 +562,21 @@ export default function App() {
                   <button onClick={() => removeLink(l.id)} style={{ ...btnDanger, padding: "6px 12px", fontSize: 12 }}>❌</button>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* 📊 REGISTRO DE ACTIVIDAD */}
+          <div style={{ background: "#fff", padding: 20, borderRadius: 10, marginTop: 30 }}>
+            <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>📜 Registro de Actividad</h2>
+            <div style={{ marginTop: 15, maxHeight: 300, overflowY: "auto", background: "#f8fafc", padding: 10, borderRadius: 8 }}>
+              {activityLogs.length > 0 ? activityLogs.map(log => (
+                <div key={log.id} style={{ marginBottom: 8, padding: 8, borderBottom: "1px solid #e2e8f0", fontSize: 13 }}>
+                  <span style={{ fontWeight: "bold", color: "#1e3a8a" }}>[{new Date(log.timestamp).toLocaleString()}]</span>
+                  <span style={{ color: "#64748b", marginLeft: 8 }}>{log.userEmail}</span>
+                  <span style={{ marginLeft: 8 }}>→ <strong>{log.type.replace(/_/g, " ").toUpperCase()}</strong></span>
+                  <p style={{ margin: "4px 0 0 0", color: "#334155" }}>{log.details}</p>
+                </div>
+              )) : <p style={{ textAlign: "center", color: "#64748b" }}>No hay registros recientes.</p>}
             </div>
           </div>
         </div>
