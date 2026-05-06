@@ -69,20 +69,23 @@ export default function App() {
   const [copiedUid, setCopiedUid] = useState(false);
 
   // ==============================
-  // 📝 REGISTRO DE ACTIVIDAD
+  // 📝 REGISTRO DE ACTIVIDAD (MEJORADO)
   // ==============================
   const logActivity = async (type, details = "") => {
     try {
-      const logRef = await addDoc(collection(db, "activity_log"), {
+      console.log("📝 Intentando registrar actividad:", type);
+      const logData = {
         type,
         details,
         userEmail: user?.email || "Sistema",
         userId: user?.uid || "Sistema",
         timestamp: new Date().toISOString()
-      });
-      console.log("✅ Actividad registrada:", logRef.id);
+      };
+      
+      const logRef = await addDoc(collection(db, "activity_log"), logData);
+      console.log("✅ Log guardado con ID:", logRef.id);
     } catch (err) {
-      console.error("❌ Error al registrar actividad:", err);
+      console.error("❌ ERROR AL GUARDAR LOG:", err);
     }
   };
 
@@ -91,11 +94,14 @@ export default function App() {
     const loadLogs = async () => {
       if (role !== "owner" && role !== "admin") return;
       try {
+        console.log("🔍 Cargando logs...");
         const snap = await getDocs(collection(db, "activity_log"));
+        console.log("📊 Logs encontrados:", snap.size);
+        
         const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        setActivityLogs(logs.slice(0, 50));
-        console.log("📜 Logs cargados:", logs.length);
+        
+        setActivityLogs(logs.slice(0, 50)); // Últimos 50
       } catch (err) {
         console.error("❌ Error cargando logs:", err);
       }
@@ -112,65 +118,50 @@ export default function App() {
   };
 
   // ==============================
-  // 🔐 AUTENTICACIÓN + ROLES (VERSIÓN ROBUSTA)
+  // 🔐 AUTENTICACIÓN + ROLES
   // ==============================
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        console.log("🔍 Usuario autenticado:", u.email, u.uid);
         try {
           let userRole = null;
-          let roleDoc = null;
-
-          // 1️⃣ Intentar buscar por UID
+          
+          // 1. Buscar por UID
           const uidRef = doc(db, "roles", u.uid);
           const uidSnap = await getDoc(uidRef);
           if (uidSnap.exists()) {
             userRole = uidSnap.data().role;
-            roleDoc = uidSnap.data();
             console.log("✅ Rol encontrado por UID:", userRole);
-          }
-
-          // 2️⃣ Si no, buscar por email
-          if (!userRole && u.email) {
+          } 
+          // 2. Si no, buscar por Email (y migrar)
+          else if (u.email) {
             const emailRef = doc(db, "roles", u.email);
             const emailSnap = await getDoc(emailRef);
             if (emailSnap.exists()) {
               userRole = emailSnap.data().role;
-              roleDoc = emailSnap.data();
-              console.log("✅ Rol encontrado por EMAIL:", userRole);
-              
-              // 🔄 MIGRAR AUTOMÁTICAMENTE A UID
+              // Migrar a UID
               await setDoc(uidRef, { 
                 role: userRole, 
                 email: u.email, 
-                migratedFrom: u.email,
-                migratedAt: new Date().toISOString()
+                migratedAt: new Date().toISOString() 
               });
               await deleteDoc(emailRef);
-              console.log("🔄 Rol migrado de email a UID correctamente");
+              console.log("🔄 Rol migrado de Email a UID");
             }
           }
 
-          // 3️⃣ Si sigue sin tener rol, crear como lector
+          // 3. Si no tiene rol, crear como lector
           if (!userRole) {
-            await setDoc(uidRef, { 
-              role: "lector", 
-              email: u.email, 
-              createdAt: new Date().toISOString() 
-            });
+            await setDoc(uidRef, { role: "lector", email: u.email, createdAt: new Date().toISOString() });
             userRole = "lector";
-            console.log("🆕 Nuevo usuario creado como LECTOR");
             logActivity("nuevo_registro", `Usuario registrado como lector: ${u.email}`);
-            alert("👋 Bienvenido. Tu cuenta ha sido creada con permisos de lectura. Contacta al administrador para solicitar edición.");
+            alert("👋 Bienvenido. Cuenta creada como LECTOR. Contacta al admin para editar.");
           }
 
           setRole(userRole);
-          console.log(" Rol final asignado:", userRole);
-
         } catch (err) {
-          console.error("❌ Error verificando rol:", err);
+          console.error("Error auth:", err);
           setRole("lector");
         }
       } else {
@@ -186,13 +177,11 @@ export default function App() {
   useEffect(() => {
     const loadUsers = async () => {
       const snap = await getDocs(collection(db, "roles"));
-      const userList = snap.docs.map(d => ({ 
+      setUsers(snap.docs.map(d => ({ 
         uid: d.id, 
         role: d.data().role, 
-        email: d.data().email || (d.id.includes("@") ? d.id : "No disponible")
-      }));
-      setUsers(userList);
-      console.log("👥 Usuarios cargados:", userList.length);
+        email: d.data().email || "Sin email"
+      })));
     };
     loadUsers();
   }, []);
@@ -226,7 +215,7 @@ export default function App() {
   const logout = () => signOut(auth);
 
   // ==============================
-  // 📋 COPIAR UID AL PORTAPAPELES
+  // 📋 COPIAR UID
   // ==============================
   const copyUidToClipboard = () => {
     if (user?.uid) {
@@ -241,32 +230,32 @@ export default function App() {
   // 👑 ROLES
   // ==============================
   const makeAdmin = async () => {
-    if (role !== "owner") return alert("❌ Solo el OWNER puede asignar administradores");
-    const target = prompt("Introduce el UID o Email del nuevo ADMIN:");
+    if (role !== "owner") return alert("❌ Solo el OWNER puede asignar admins");
+    const target = prompt("UID o Email del nuevo ADMIN:");
     if (!target) return;
     await setDoc(doc(db, "roles", target), { role: "admin", updatedAt: new Date().toISOString() });
     logActivity("rol_asignado", `${target} ascendido a ADMIN`);
-    alert("✅ Administrador asignado. El usuario debe cerrar sesión y volver a entrar para ver los cambios.");
+    alert("✅ Admin asignado.");
     const snap = await getDocs(collection(db, "roles"));
     setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email || d.id })));
   };
 
   const makeEditor = async () => {
     if (role !== "owner" && role !== "admin") return alert("❌ No tienes permisos");
-    const target = prompt("Introduce el UID o Email del nuevo EDITOR:");
+    const target = prompt("UID o Email del nuevo EDITOR:");
     if (!target) return;
     await setDoc(doc(db, "roles", target), { role: "editor", updatedAt: new Date().toISOString() });
     logActivity("rol_asignado", `${target} ascendido a EDITOR`);
-    alert("✅ Editor asignado. El usuario debe cerrar sesión y volver a entrar para ver los cambios.");
+    alert("✅ Editor asignado.");
     const snap = await getDocs(collection(db, "roles"));
     setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email || d.id })));
   };
 
   const deleteUserRole = async (uid) => {
     if (uid === ADMIN_UID) return alert("❌ No puedes eliminar al OWNER");
-    if (!confirm("¿Eliminar este usuario?")) return;
+    if (!confirm("¿Eliminar usuario?")) return;
     await deleteDoc(doc(db, "roles", uid));
-    logActivity("usuario_eliminado", `Usuario ${uid} eliminado del sistema`);
+    logActivity("usuario_eliminado", `Usuario ${uid} eliminado`);
     const snap = await getDocs(collection(db, "roles"));
     setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email || d.id })));
   };
@@ -296,11 +285,8 @@ export default function App() {
       });
     } else {
       await addDoc(collection(db, "articles"), {
-        title, content, category,
-        image: imageUrl,
-        date: new Date().toLocaleDateString(),
-        author: user.email,
-        authorId: user.uid,
+        title, content, category, image: imageUrl,
+        date: new Date().toLocaleDateString(), author: user.email, authorId: user.uid,
         createdAt: new Date().toISOString()
       });
     }
@@ -314,23 +300,15 @@ export default function App() {
 
   const startEdit = (a) => {
     if (!checkAuth()) return;
-    if (role === "editor" && a.authorId !== user.uid) {
-      return alert("❌ Solo puedes editar tus propios artículos");
-    }
-    setTitle(a.title);
-    setContent(a.content);
-    setCategory(a.category);
-    setImage(a.image || "");
-    setEditingId(a.id);
-    setView("admin");
+    if (role === "editor" && a.authorId !== user.uid) return alert("❌ Solo puedes editar tus artículos");
+    setTitle(a.title); setContent(a.content); setCategory(a.category);
+    setImage(a.image || ""); setEditingId(a.id); setView("admin");
   };
 
   const removeArticle = async (id) => {
     if (!checkAuth()) return;
     const article = articles.find(a => a.id === id);
-    if (role === "editor" && article?.authorId !== user.uid) {
-      return alert("❌ Solo puedes eliminar tus propios artículos");
-    }
+    if (role === "editor" && article?.authorId !== user.uid) return alert("❌ Solo puedes eliminar tus artículos");
     if (!confirm("¿Eliminar este artículo?")) return;
     await deleteDoc(doc(db, "articles", id));
     logActivity("articulo_eliminado", `"${article?.title}" eliminado por ${user.email}`);
@@ -338,25 +316,19 @@ export default function App() {
     setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
-  // 📤 ENVÍO A TELEGRAM + ANTI-SPAM
+  // 📤 TELEGRAM
   const sendToTelegram = async (a) => {
     if (!checkAuth()) return;
-    
     const lastSend = localStorage.getItem(`tg_cooldown_${user.uid}`);
     if (lastSend && (Date.now() - parseInt(lastSend)) < 300000) {
       const waitSec = Math.ceil((300000 - (Date.now() - parseInt(lastSend))) / 1000);
-      return alert(`⏳ Anti-Spam activo: Espera ${waitSec} segundos antes de enviar otro mensaje a Telegram.`);
+      return alert(`⏳ Anti-Spam: Espera ${waitSec}s.`);
     }
-
-    if (!confirm("¿Enviar este artículo COMPLETO a Telegram?")) return;
+    if (!confirm("¿Enviar a Telegram?")) return;
 
     const BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
     const CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
-
-    if (!BOT_TOKEN || !CHAT_ID) {
-      alert("⚠️ Faltan credenciales de Telegram. Contacta al administrador.");
-      return;
-    }
+    if (!BOT_TOKEN || !CHAT_ID) return alert("⚠️ Credenciales de Telegram faltantes.");
 
     const safeTitle = a.title.replace(/[*_`~[\]\\]/g, "");
     const safeContent = a.content.replace(/[*_`~[\]\\]/g, "");
@@ -365,76 +337,51 @@ export default function App() {
     
     const splitMessage = (text, maxSize = 4000) => {
       const chunks = [];
-      for (let i = 0; i < text.length; i += maxSize) {
-        chunks.push(text.substring(i, i + maxSize));
-      }
+      for (let i = 0; i < text.length; i += maxSize) chunks.push(text.substring(i, i + maxSize));
       return chunks;
     };
 
     try {
       if (a.image) {
-        const photoResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: CHAT_ID,
-            photo: a.image,
-            caption: header + "👇 *Artículo completo a continuación* 👇",
-            parse_mode: "Markdown"
-          })
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: CHAT_ID, photo: a.image, caption: header + "👇 *Artículo completo* 👇", parse_mode: "Markdown" })
         });
-        const photoData = await photoResponse.json();
-        if (!photoData.ok) console.warn("⚠️ No se pudo enviar la imagen:", photoData.description);
       }
 
       const fullContent = header + safeContent + `\n\n🔗 Ver en la web: ${window.location.origin}`;
       const chunks = splitMessage(fullContent);
 
       for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
-        const suffix = i < chunks.length - 1 ? "\n\n*(continúa...)*" : "\n\n✅ *Fin del artículo*";
-        
-        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: CHAT_ID,
-            text: chunk + suffix,
-            parse_mode: "Markdown",
-            disable_web_page_preview: false
-          })
+        const suffix = i < chunks.length - 1 ? "\n\n*(continúa...)*" : "\n\n✅ *Fin*";
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: CHAT_ID, text: chunks[i] + suffix, parse_mode: "Markdown" })
         });
-
-        const data = await response.json();
-        if (!data.ok) throw new Error(data.description || "Error al enviar mensaje");
       }
 
       localStorage.setItem(`tg_cooldown_${user.uid}`, Date.now().toString());
-      logActivity("telegram_enviado", `"${a.title}" enviado a canal por ${user.email}`);
-      alert(`✅ Artículo enviado correctamente (${chunks.length} mensaje${chunks.length > 1 ? 's' : ''}). Cooldown: 5 min.`);
-
-    } catch (err) {
-      console.error("❌ Error en Telegram:", err);
-      alert(`❌ Error: ${err.message}`);
-    }
+      logActivity("telegram_enviado", `"${a.title}" enviado a Telegram`);
+      alert("✅ Enviado a Telegram (Cooldown 5 min).");
+    } catch (err) { alert("❌ Error: " + err.message); }
   };
 
   // ==============================
-  // 🔗 ENLACES: ADMIN
+  // 🔗 ENLACES
   // ==============================
   const addLink = async () => {
     if (!newLinkName || !newLinkUrl) return alert("Rellena nombre y URL");
     await addDoc(collection(db, "links"), { name: newLinkName, url: newLinkUrl, createdAt: new Date().toISOString() });
-    logActivity("enlace_creado", `"${newLinkName}" añadido por ${user.email}`);
+    logActivity("enlace_creado", `"${newLinkName}" añadido`);
     setNewLinkName(""); setNewLinkUrl("");
     const snap = await getDocs(collection(db, "links"));
     setLinks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
   const removeLink = async (id) => {
-    if (!confirm("¿Eliminar este enlace?")) return;
+    if (!confirm("¿Eliminar enlace?")) return;
     await deleteDoc(doc(db, "links", id));
-    logActivity("enlace_eliminado", `Enlace ID ${id} eliminado por ${user.email}`);
+    logActivity("enlace_eliminado", `Enlace ${id} eliminado`);
     const snap = await getDocs(collection(db, "links"));
     setLinks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
@@ -456,7 +403,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 🏠 INICIO: PORTADA IMPERIAL */}
+      {/* 🏠 INICIO */}
       {view === "home" && (
         <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
           <div style={{ marginBottom: 30, padding: 20 }}>
@@ -556,30 +503,28 @@ export default function App() {
           </div>
 
           {/* 👤 GESTIÓN USUARIOS */}
-          {(role === "owner" || role === "admin") && (
-            <div style={{ background: "#fff", padding: 20, marginBottom: 30, borderRadius: 10, marginTop: 30 }}>
-              <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>👤 Usuarios del sistema</h2>
-              <div style={{ marginTop: 15, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {role === "owner" && <button onClick={makeAdmin} style={btnPrimary}>➕ Admin</button>}
-                <button onClick={makeEditor} style={btnPrimary}>➕ Editor</button>
-              </div>
-              <div style={{ marginTop: 15 }}>
-                {users.map(u => (
-                  <div key={u.uid} style={{ marginBottom: 10, padding: 10, background: "#f8fafc", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-                    <div style={{ flex: 1, minWidth: 200 }}>
-                      <p style={{ margin: 0, fontWeight: "bold" }}>📧 {u.email || "Sin email"}</p>
-                      <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", wordBreak: "break-all" }}>🆔 {u.uid}</p>
-                      <p style={{ margin: "4px 0 0 0", color: "#1d4ed8" }}>🔑 Rol: <strong>{u.role}</strong></p>
-                    </div>
-                    <div>
-                      <button onClick={() => toggleRole(u.uid, u.role)} style={btnPrimary}>🔄 Cambiar rol</button>
-                      <button onClick={() => deleteUserRole(u.uid)} style={btnDanger}>❌ Eliminar</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div style={{ background: "#fff", padding: 20, marginBottom: 30, borderRadius: 10, marginTop: 30 }}>
+            <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>👤 Usuarios del sistema</h2>
+            <div style={{ marginTop: 15, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {role === "owner" && <button onClick={makeAdmin} style={btnPrimary}>➕ Admin</button>}
+              <button onClick={makeEditor} style={btnPrimary}>➕ Editor</button>
             </div>
-          )}
+            <div style={{ marginTop: 15 }}>
+              {users.map(u => (
+                <div key={u.uid} style={{ marginBottom: 10, padding: 10, background: "#f8fafc", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <p style={{ margin: 0, fontWeight: "bold" }}>📧 {u.email || "Sin email"}</p>
+                    <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", wordBreak: "break-all" }}>🆔 {u.uid}</p>
+                    <p style={{ margin: "4px 0 0 0", color: "#1d4ed8" }}>🔑 Rol: <strong>{u.role}</strong></p>
+                  </div>
+                  <div>
+                    <button onClick={() => toggleRole(u.uid, u.role)} style={btnPrimary}>🔄 Cambiar rol</button>
+                    <button onClick={() => deleteUserRole(u.uid)} style={btnDanger}>❌ Eliminar</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* 🔧 GESTIÓN ENLACES */}
           <div style={{ background: "#fff", padding: 20, borderRadius: 10 }}>
