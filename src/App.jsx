@@ -204,6 +204,7 @@ export default function App() {
     setTitle(""); setContent(""); setImage(""); setEditingId(null);
   };
 
+  // ✅ CORREGIDO: Ahora redirige a "admin" en lugar de "home"
   const startEdit = (a) => {
     if (!checkAuth()) return;
     setTitle(a.title);
@@ -211,7 +212,7 @@ export default function App() {
     setCategory(a.category);
     setImage(a.image || "");
     setEditingId(a.id);
-    setView("home");
+    setView("admin"); // ← CAMBIADO de "home" a "admin"
   };
 
   const removeArticle = async (id) => {
