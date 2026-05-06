@@ -4,7 +4,7 @@
 
 import { db, auth } from "./firebase.js";
 import {
-  collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, setDoc, query, orderBy, limit
+  collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, setDoc
 } from "firebase/firestore";
 import {
   signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged
@@ -38,11 +38,6 @@ const btnPrimary = {
 const btnDanger = {
   background: "#b91c1c", color: "#fff", padding: "12px 18px", borderRadius: 10,
   border: "none", cursor: "pointer", fontWeight: "bold"
-};
-
-const btnSecondary = {
-  background: "#475569", color: "#fff", padding: "12px 18px", borderRadius: 10,
-  border: "none", cursor: "pointer", marginRight: 10, fontWeight: "bold"
 };
 
 // ==============================
@@ -90,11 +85,17 @@ export default function App() {
     }
   };
 
+  // 🔄 Carga de logs ordenados en cliente (evita errores de índices en Firestore)
   useEffect(() => {
     const loadLogs = async () => {
-      const q = query(collection(db, "activity_log"), orderBy("timestamp", "desc"), limit(50));
-      const snap = await getDocs(q);
-      setActivityLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      try {
+        const snap = await getDocs(collection(db, "activity_log"));
+        const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        setActivityLogs(logs.slice(0, 50));
+      } catch (err) {
+        console.error("Error cargando logs:", err);
+      }
     };
     if (role === "owner" || role === "admin") loadLogs();
   }, [role]);
@@ -108,26 +109,48 @@ export default function App() {
   };
 
   // ==============================
-  // 🔐 AUTENTICACIÓN + ROLES
+  // 🔐 AUTENTICACIÓN + ROLES (CON AUTO-MIGRACIÓN)
   // ==============================
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
         try {
-          const ref = doc(db, "roles", u.uid);
-          const snap = await getDoc(ref);
-          if (snap.exists()) {
-            setRole(snap.data().role);
+          let roleData = null;
+          const uidRef = doc(db, "roles", u.uid);
+          const uidSnap = await getDoc(uidRef);
+
+          if (uidSnap.exists()) {
+            roleData = uidSnap.data();
+          } else if (u.email) {
+            // 🔍 Fallback: Buscar si el rol se guardó bajo el correo
+            const emailRef = doc(db, "roles", u.email);
+            const emailSnap = await getDoc(emailRef);
+            if (emailSnap.exists()) {
+              roleData = emailSnap.data();
+              // 🔄 Migrar automáticamente al UID correcto
+              await setDoc(uidRef, { ...roleData, migratedFrom: u.email, updatedAt: new Date().toISOString() });
+              await deleteDoc(emailRef);
+              console.log("✅ Rol migrado de correo a UID correctamente.");
+            }
+          }
+
+          if (roleData) {
+            setRole(roleData.role);
           } else {
             // 🆕 NUEVO USUARIO: Rol por defecto "lector"
-            await setDoc(ref, { role: "lector", email: u.email, createdAt: new Date().toISOString() });
+            await setDoc(uidRef, { role: "lector", email: u.email, createdAt: new Date().toISOString() });
             setRole("lector");
             logActivity("nuevo_registro", `Usuario registrado como lector: ${u.email}`);
             alert("👋 Bienvenido. Tu cuenta ha sido creada con permisos de lectura. Contacta al administrador para solicitar edición.");
           }
-        } catch { setRole("lector"); }
-      } else { setRole(null); }
+        } catch (err) {
+          console.error("Error verificando rol:", err);
+          setRole("lector");
+        }
+      } else {
+        setRole(null);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -138,7 +161,11 @@ export default function App() {
   useEffect(() => {
     const loadUsers = async () => {
       const snap = await getDocs(collection(db, "roles"));
-      setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email })));
+      setUsers(snap.docs.map(d => ({ 
+        uid: d.id, 
+        role: d.data().role, 
+        email: d.data().email || d.id // Si no hay email guardado, muestra el ID del doc
+      })));
     };
     loadUsers();
   }, []);
@@ -188,20 +215,24 @@ export default function App() {
   // ==============================
   const makeAdmin = async () => {
     if (role !== "owner") return alert("❌ Solo el OWNER puede asignar administradores");
-    const uid = prompt("UID del nuevo ADMIN:");
-    if (!uid) return;
-    await setDoc(doc(db, "roles", uid), { role: "admin", updatedAt: new Date().toISOString() });
-    logActivity("rol_asignado", `${uid} ascendido a ADMIN`);
-    alert("✅ Administrador asignado. Notificación registrada.");
+    const target = prompt("Introduce el UID o Email del nuevo ADMIN:");
+    if (!target) return;
+    await setDoc(doc(db, "roles", target), { role: "admin", updatedAt: new Date().toISOString() });
+    logActivity("rol_asignado", `${target} ascendido a ADMIN`);
+    alert("✅ Administrador asignado. El usuario verá los cambios al recargar.");
+    const snap = await getDocs(collection(db, "roles"));
+    setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email || d.id })));
   };
 
   const makeEditor = async () => {
     if (role !== "owner" && role !== "admin") return alert("❌ No tienes permisos");
-    const uid = prompt("UID del nuevo EDITOR:");
-    if (!uid) return;
-    await setDoc(doc(db, "roles", uid), { role: "editor", updatedAt: new Date().toISOString() });
-    logActivity("rol_asignado", `${uid} ascendido a EDITOR`);
-    alert("✅ Editor asignado. Notificación registrada.");
+    const target = prompt("Introduce el UID o Email del nuevo EDITOR:");
+    if (!target) return;
+    await setDoc(doc(db, "roles", target), { role: "editor", updatedAt: new Date().toISOString() });
+    logActivity("rol_asignado", `${target} ascendido a EDITOR`);
+    alert("✅ Editor asignado. El usuario verá los cambios al recargar.");
+    const snap = await getDocs(collection(db, "roles"));
+    setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email || d.id })));
   };
 
   const deleteUserRole = async (uid) => {
@@ -210,7 +241,7 @@ export default function App() {
     await deleteDoc(doc(db, "roles", uid));
     logActivity("usuario_eliminado", `Usuario ${uid} eliminado del sistema`);
     const snap = await getDocs(collection(db, "roles"));
-    setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email })));
+    setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email || d.id })));
   };
 
   const toggleRole = async (uid, currentRole) => {
@@ -219,7 +250,7 @@ export default function App() {
     await setDoc(doc(db, "roles", uid), { role: newRole, updatedAt: new Date().toISOString() });
     logActivity("rol_cambiado", `Usuario ${uid} cambiado a ${newRole.toUpperCase()}`);
     const snap = await getDocs(collection(db, "roles"));
-    setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email })));
+    setUsers(snap.docs.map(d => ({ uid: d.id, role: d.data().role, email: d.data().email || d.id })));
   };
 
   // ==============================
@@ -256,7 +287,6 @@ export default function App() {
 
   const startEdit = (a) => {
     if (!checkAuth()) return;
-    // 🛡️ Verificar permisos de editor
     if (role === "editor" && a.authorId !== user.uid) {
       return alert("❌ Solo puedes editar tus propios artículos");
     }
@@ -285,7 +315,6 @@ export default function App() {
   const sendToTelegram = async (a) => {
     if (!checkAuth()) return;
     
-    // 🛡️ ANTI-SPAM: Cooldown de 5 minutos por usuario
     const lastSend = localStorage.getItem(`tg_cooldown_${user.uid}`);
     if (lastSend && (Date.now() - parseInt(lastSend)) < 300000) {
       const waitSec = Math.ceil((300000 - (Date.now() - parseInt(lastSend))) / 1000);
@@ -353,10 +382,9 @@ export default function App() {
         if (!data.ok) throw new Error(data.description || "Error al enviar mensaje");
       }
 
-      // ✅ Activar cooldown y loguear
       localStorage.setItem(`tg_cooldown_${user.uid}`, Date.now().toString());
       logActivity("telegram_enviado", `"${a.title}" enviado a canal por ${user.email}`);
-      alert(`✅ Artículo enviado correctamente (${chunks.length} mensaje${chunks.length > 1 ? 's' : ''}). Cooldown activado: 5 min.`);
+      alert(`✅ Artículo enviado correctamente (${chunks.length} mensaje${chunks.length > 1 ? 's' : ''}). Cooldown: 5 min.`);
 
     } catch (err) {
       console.error("❌ Error en Telegram:", err);
@@ -388,13 +416,8 @@ export default function App() {
   // 🎨 UI
   // ==============================
   return (
-    <div style={{
-      background: "#f1f5f9", minHeight: "100vh", padding: 20,
-      fontFamily: "Segoe UI, Arial", color: "#111"
-    }}>
-      <h1 style={{ textAlign: "center", fontSize: "36px", fontWeight: "900", color: "#020617", fontFamily: "Georgia, serif" }}>
-        📜 Historia de España
-      </h1>
+    <div style={{ background: "#f1f5f9", minHeight: "100vh", padding: 20, fontFamily: "Segoe UI, Arial", color: "#111" }}>
+      <h1 style={{ textAlign: "center", fontSize: "36px", fontWeight: "900", color: "#020617", fontFamily: "Georgia, serif" }}>📜 Historia de España</h1>
 
       {/* NAVEGACIÓN */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -410,21 +433,10 @@ export default function App() {
       {view === "home" && (
         <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
           <div style={{ marginBottom: 30, padding: 20 }}>
-            <img 
-              src="https://upload.wikimedia.org/wikipedia/commons/8/8b/Escudo_de_los_Reyes_Catolicos_%281475-1492%29.svg"
-              alt="Escudo de Hispania Imperial"
-              style={{ width: 220, height: 220, objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.3))" }}
-              onError={(e) => { e.target.alt = "⚠️ Escudo no cargado"; e.target.style.display = 'none'; }}
-            />
+            <img src="https://upload.wikimedia.org/wikipedia/commons/8/8b/Escudo_de_los_Reyes_Catolicos_%281475-1492%29.svg" alt="Escudo" style={{ width: 220, height: 220, objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.3))" }} onError={(e) => { e.target.style.display = 'none'; }} />
           </div>
-          <div style={{
-            background: "linear-gradient(135deg, #1e3a8a 0%, #7c2d12 100%)",
-            color: "#fbbf24", padding: "30px 20px", borderRadius: 15, marginBottom: 40,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.3)", border: "3px solid #fbbf24"
-          }}>
-            <h2 style={{ fontSize: "52px", fontWeight: "900", margin: 0, textShadow: "3px 3px 6px rgba(0,0,0,0.5)", letterSpacing: "4px", fontFamily: "Georgia, 'Times New Roman', serif", textTransform: "uppercase" }}>
-              🏛️ HISPANIA IMPERIAL 🏛️
-            </h2>
+          <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #7c2d12 100%)", color: "#fbbf24", padding: "30px 20px", borderRadius: 15, marginBottom: 40, boxShadow: "0 8px 24px rgba(0,0,0,0.3)", border: "3px solid #fbbf24" }}>
+            <h2 style={{ fontSize: "52px", fontWeight: "900", margin: 0, textShadow: "3px 3px 6px rgba(0,0,0,0.5)", letterSpacing: "4px", fontFamily: "Georgia, 'Times New Roman', serif", textTransform: "uppercase" }}>🏛️ HISPANIA IMPERIAL 🏛️</h2>
             <p style={{ fontSize: "22px", marginTop: 15, fontStyle: "italic", color: "#fef3c7", fontFamily: "Georgia, serif", letterSpacing: "2px" }}>PLUS ULTRA</p>
           </div>
           <div style={{ background: "#fff", padding: 40, borderRadius: 15, marginBottom: 40, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", border: "2px solid #e2e8f0" }}>
@@ -446,7 +458,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 📚 ARTÍCULOS: Listado por categorías */}
+      {/* 📚 ARTÍCULOS */}
       {view === "articles" && (
         <>
           {CATEGORIES.map(cat => {
@@ -460,16 +472,12 @@ export default function App() {
                     <h3 style={{ fontFamily: "Georgia, serif" }}>{a.title}</h3>
                     <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{a.content}</p>
                     {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 10, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
-                    
-                    {/* 🛡️ PERMISOS POR ROL */}
-                    {user && (
-                      (role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid)) && (
-                        <div style={{ marginTop: 10 }}>
-                          <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
-                          <button onClick={() => removeArticle(a.id)} style={btnDanger}>🗑️ Eliminar</button>
-                          <button onClick={() => sendToTelegram(a)} style={{ ...btnPrimary, background: "#22c55e" }}>📤 Telegram</button>
-                        </div>
-                      )
+                    {user && ((role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid))) && (
+                      <div style={{ marginTop: 10 }}>
+                        <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
+                        <button onClick={() => removeArticle(a.id)} style={btnDanger}>🗑️ Eliminar</button>
+                        <button onClick={() => sendToTelegram(a)} style={{ ...btnPrimary, background: "#22c55e" }}>📤 Telegram</button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -480,13 +488,13 @@ export default function App() {
         </>
       )}
 
-      {/* 🔗 ENLACES: Solo lista limpia */}
+      {/* 🔗 ENLACES */}
       {view === "links" && (
         <div style={{ marginTop: 40, maxWidth: 800, margin: "40px auto" }}>
           <h2 style={{ fontWeight: "900", fontSize: "26px", color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontFamily: "Georgia, serif" }}>🔗 Enlaces de interés</h2>
           <div style={{ marginTop: 20, display: "grid", gap: 15 }}>
             {links.length > 0 ? links.map(link => (
-              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", padding: 15, background: "#fff", borderRadius: 10, fontWeight: "700", color: "#0f172a", textDecoration: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", transition: "transform 0.2s", fontFamily: "Georgia, serif" }}>🔗 {link.name}</a>
+              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", padding: 15, background: "#fff", borderRadius: 10, fontWeight: "700", color: "#0f172a", textDecoration: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", fontFamily: "Georgia, serif" }}>🔗 {link.name}</a>
             )) : <p style={{ textAlign: "center", color: "#64748b" }}>No hay enlaces disponibles.</p>}
           </div>
         </div>
@@ -513,29 +521,28 @@ export default function App() {
             <select value={category} onChange={e => setCategory(e.target.value)} style={{ width: "100%", padding: 10, marginBottom: 10 }}>
               {CATEGORIES.map(c => <option key={c}>{c}</option>)}
             </select>
-            <input value={image} onChange={e => setImage(e.target.value)} placeholder="Pega aquí la URL de Cloudinary" style={{ width: "100%", marginBottom: 5, padding: 10 }} />
-            <small style={{ color: "#64748b", display: "block", marginBottom: 10 }}>💡 Sube tu imagen a Cloudinary y pega el enlace directo aquí.</small>
-            {image && <img src={image} style={{ maxWidth: "100%", maxHeight: 150, marginTop: 10, borderRadius: 8, objectFit: "cover", border: "1px solid #e2e8f0" }} alt="Preview" onError={(e) => { e.target.style.display = 'none'; }} />}
+            <input value={image} onChange={e => setImage(e.target.value)} placeholder="URL de Cloudinary" style={{ width: "100%", marginBottom: 5, padding: 10 }} />
+            {image && <img src={image} style={{ maxWidth: "100%", maxHeight: 150, marginTop: 10, borderRadius: 8, objectFit: "cover" }} alt="Preview" onError={(e) => { e.target.style.display = 'none'; }} />}
             <br /><br />
             <button onClick={publish} style={btnPrimary}>{editingId ? "💾 Guardar cambios" : "🚀 Publicar"}</button>
             {editingId && <button onClick={() => { setEditingId(null); setTitle(""); setContent(""); setImage(""); }} style={{ ...btnDanger, marginLeft: 10 }}>Cancelar</button>}
           </div>
 
           {/* 👤 GESTIÓN USUARIOS */}
-          {role === "owner" && (
+          {(role === "owner" || role === "admin") && (
             <div style={{ background: "#fff", padding: 20, marginBottom: 30, borderRadius: 10, marginTop: 30 }}>
               <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>👤 Usuarios del sistema</h2>
               <div style={{ marginTop: 15, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button onClick={makeAdmin} style={btnPrimary}>➕ Admin</button>
+                {role === "owner" && <button onClick={makeAdmin} style={btnPrimary}>➕ Admin</button>}
                 <button onClick={makeEditor} style={btnPrimary}>➕ Editor</button>
               </div>
               <div style={{ marginTop: 15 }}>
                 {users.map(u => (
-                  <div key={u.uid} style={{ marginBottom: 10, padding: 10, background: "#f8fafc", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <p style={{ margin: 0 }}><strong>UID:</strong> {u.uid}</p>
-                      <p style={{ margin: 0 }}><strong>Email:</strong> {u.email || "N/A"}</p>
-                      <p style={{ margin: 0 }}><strong>Rol:</strong> {u.role}</p>
+                  <div key={u.uid} style={{ marginBottom: 10, padding: 10, background: "#f8fafc", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <p style={{ margin: 0, fontWeight: "bold" }}>📧 {u.email || "Sin email"}</p>
+                      <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", wordBreak: "break-all" }}>🆔 {u.uid}</p>
+                      <p style={{ margin: "4px 0 0 0", color: "#1d4ed8" }}>🔑 Rol: <strong>{u.role}</strong></p>
                     </div>
                     <div>
                       <button onClick={() => toggleRole(u.uid, u.role)} style={btnPrimary}>🔄 Cambiar rol</button>
@@ -576,12 +583,11 @@ export default function App() {
                   <span style={{ marginLeft: 8 }}>→ <strong>{log.type.replace(/_/g, " ").toUpperCase()}</strong></span>
                   <p style={{ margin: "4px 0 0 0", color: "#334155" }}>{log.details}</p>
                 </div>
-              )) : <p style={{ textAlign: "center", color: "#64748b" }}>No hay registros recientes.</p>}
+              )) : <p style={{ textAlign: "center", color: "#64748b", padding: 20 }}>No hay registros recientes.</p>}
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }
