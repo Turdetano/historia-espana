@@ -48,162 +48,40 @@ const btnSecondary = {
   fontSize: "16px", minHeight: "48px", touchAction: "manipulation"
 };
 
-// Estilos responsive con media queries
+// Estilos responsive
 const styles = `
-  * {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-  }
-  
-  button {
-    transition: transform 0.1s, opacity 0.2s;
-  }
-  
-  button:active {
-    transform: scale(0.98);
-    opacity: 0.9;
-  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  button { transition: transform 0.1s, opacity 0.2s; }
+  button:active { transform: scale(0.98); opacity: 0.9; }
 
-  /* MÓVIL (hasta 640px) */
+  /* MÓVIL */
   @media (max-width: 640px) {
-    .nav-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      align-items: stretch;
-    }
-    
-    .nav-buttons button {
-      width: 100%;
-      margin: 0;
-      padding: 16px 20px;
-      font-size: 16px;
-    }
-    
-    .article-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    
-    .article-actions button {
-      width: 100%;
-      margin: 0;
-      padding: 14px 16px;
-    }
-    
-    .user-info-section {
-      padding: 15px !important;
-    }
-    
-    .user-uid-box {
-      flex-direction: column !important;
-      gap: 8px !important;
-    }
-    
-    .user-uid-box code {
-      word-break: break-all;
-      font-size: 12px;
-    }
-    
-    .admin-buttons {
-      flex-direction: column !important;
-      gap: 8px !important;
-    }
-    
-    .admin-buttons button {
-      width: 100% !important;
-      margin: 0 !important;
-    }
-    
-    .user-card {
-      flex-direction: column !important;
-      align-items: stretch !important;
-      gap: 12px !important;
-    }
-    
-    .user-card-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    
-    .user-card-actions button {
-      width: 100%;
-    }
-    
-    h1 {
-      font-size: 28px !important;
-    }
-    
-    h2 {
-      font-size: 22px !important;
-    }
-    
-    .imperial-title {
-      font-size: 36px !important;
-    }
-    
-    .form-input, .form-textarea, .form-select {
-      font-size: 16px !important; /* Previene zoom en iOS */
-    }
+    .nav-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+    .nav-buttons button { width: 100%; margin: 0; padding: 16px 20px; font-size: 16px; }
+    .article-actions { display: flex; flex-direction: column; gap: 8px; }
+    .article-actions button { width: 100%; margin: 0; padding: 14px 16px; }
+    .user-uid-box { flex-direction: column !important; gap: 8px !important; }
+    .user-card { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
+    .user-card-actions { display: flex; flex-direction: column; gap: 8px; }
+    .user-card-actions button { width: 100%; }
+    h1 { font-size: 28px !important; }
+    h2 { font-size: 22px !important; }
+    .imperial-title { font-size: 36px !important; }
+    input, textarea, select { font-size: 16px !important; }
   }
 
-  /* TABLET (641px - 1024px) */
+  /* TABLET */
   @media (min-width: 641px) and (max-width: 1024px) {
-    .nav-buttons {
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px;
-    }
-    
-    .nav-buttons button {
-      flex: 1 1 auto;
-      min-width: 120px;
-    }
-    
-    .article-actions {
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    
-    .article-actions button {
-      flex: 1 1 auto;
-      min-width: 100px;
-    }
-    
-    .user-card {
-      flex-wrap: wrap;
-    }
-    
-    .admin-buttons {
-      flex-wrap: wrap;
-    }
+    .nav-buttons { flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .nav-buttons button { flex: 1 1 auto; min-width: 120px; }
+    .article-actions { flex-wrap: wrap; gap: 8px; }
+    .article-actions button { flex: 1 1 auto; min-width: 100px; }
   }
 
-  /* DESKTOP (más de 1024px) */
+  /* DESKTOP */
   @media (min-width: 1025px) {
-    .nav-buttons {
-      display: flex;
-      flex-direction: row;
-      justify-content: center;
-      gap: 0;
-    }
-    
-    .nav-buttons button {
-      margin-right: 10px;
-    }
-  }
-
-  /* MEJORAS TÁCTILES GENERALES */
-  @media (hover: none) {
-    button {
-      padding: 16px 20px;
-    }
-    
-    .article-actions button {
-      padding: 14px 16px;
-    }
+    .nav-buttons { display: flex; flex-direction: row; justify-content: center; gap: 0; }
+    .nav-buttons button { margin-right: 10px; }
   }
 `;
 
@@ -241,8 +119,7 @@ export default function App() {
   const logActivity = async (type, details = "") => {
     try {
       const logRef = await addDoc(collection(db, "activity_log"), {
-        type,
-        details,
+        type, details,
         userEmail: user?.email || "Sistema",
         userId: user?.uid || "Sistema",
         timestamp: new Date().toISOString()
@@ -277,40 +154,67 @@ export default function App() {
   };
 
   // ==============================
-  // 🔐 AUTENTICACIÓN + ROLES
+  // 🔐 AUTENTICACIÓN + ROLES (BLINDADO)
   // ==============================
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
+        console.log("🔍 Usuario detectado:", u.email, u.uid);
         try {
           let userRole = null;
+          
+          // 1. Buscar por UID (Método estándar)
           const uidRef = doc(db, "roles", u.uid);
           const uidSnap = await getDoc(uidRef);
           if (uidSnap.exists()) {
             userRole = uidSnap.data().role;
-          } else if (u.email) {
+            console.log("✅ Rol encontrado por UID:", userRole);
+          } 
+          // 2. Buscar por Email (Migración y fallback)
+          else if (u.email) {
             const emailRef = doc(db, "roles", u.email);
             const emailSnap = await getDoc(emailRef);
             if (emailSnap.exists()) {
               userRole = emailSnap.data().role;
-              await setDoc(uidRef, { role: userRole, email: u.email, migratedAt: new Date().toISOString() });
+              console.log("✅ Rol encontrado por Email:", userRole);
+              
+              // Migrar automáticamente a UID para evitar errores futuros
+              await setDoc(uidRef, { 
+                role: userRole, 
+                email: u.email, 
+                migratedAt: new Date().toISOString() 
+              });
               await deleteDoc(emailRef);
+              console.log("🔄 Rol migrado de Email a UID correctamente");
+            } else {
+              console.warn("⚠️ No se encontró rol ni por UID ni por Email:", u.email);
             }
           }
+
+          // 3. Si sigue sin tener rol, crear como lector (NUEVO USUARIO)
           if (!userRole) {
             await setDoc(uidRef, { role: "lector", email: u.email, createdAt: new Date().toISOString() });
             userRole = "lector";
-            logActivity("nuevo_registro", `Usuario registrado: ${u.email}`);
-            alert("👋 Bienvenido. Cuenta creada como LECTOR.");
+            console.log("🆕 Nuevo usuario creado como LECTOR");
+            logActivity("nuevo_registro", `Usuario registrado como lector: ${u.email}`);
+            // Solo mostrar alerta si es la primera vez
+            if (!localStorage.getItem('welcomed_' + u.uid)) {
+              alert("👋 Bienvenido. Cuenta creada como LECTOR. Contacta al admin.");
+              localStorage.setItem('welcomed_' + u.uid, 'true');
+            }
           }
+
           setRole(userRole);
+          console.log("🔑 ROL FINAL ASIGNADO:", userRole);
+
         } catch (err) {
-          console.error("Error auth:", err);
+          console.error("❌ Error verificando rol:", err);
           setRole("lector");
         }
       } else {
         setRole(null);
+        console.log("👋 Usuario cerrado sesión");
       }
     });
     return () => unsubscribe();
@@ -590,6 +494,8 @@ export default function App() {
                     <h3 style={{ fontFamily: "Georgia, serif" }}>{a.title}</h3>
                     <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{a.content}</p>
                     {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 10, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
+                    
+                    {/* BOTONES CON PERMISOS DE ADMIN/EDITOR */}
                     {user && ((role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid))) && (
                       <div className="article-actions" style={{ marginTop: 10 }}>
                         <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
