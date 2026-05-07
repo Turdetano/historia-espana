@@ -10,6 +10,7 @@ import {
   signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged
 } from "firebase/auth";
 import { useState, useEffect } from "react";
+import mammoth from "mammoth"; // 🆕 Importador de Word/Txt
 
 // ==============================
 // ⚙️ CONFIGURACIÓN GENERAL
@@ -114,6 +115,22 @@ const styles = `
     pointer-events: none;
   }
 
+  /* IMPORT ZONE */
+  .import-zone {
+    border: 2px dashed #94a3b8;
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    background: #f8fafc;
+    margin-bottom: 25px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .import-zone:hover {
+    border-color: #1d4ed8;
+    background: #eff6ff;
+  }
+
   /* RESPONSIVE */
   @media (max-width: 640px) {
     .nav-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
@@ -171,9 +188,12 @@ export default function App() {
   // Estado para feedback de copiar UID
   const [copiedUid, setCopiedUid] = useState(false);
 
-  // 📂 Estado para el ACCORDION (Categorías abiertas)
-  // Por defecto abrimos la primera categoría para que no se vea vacío
+  // 📂 Estado para el ACCORDION
   const [openCategories, setOpenCategories] = useState(["Edad Antigua"]);
+  
+  // 🆕 Estado para Importación
+  const [isImporting, setIsImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState("");
 
   // ==============================
   // 📝 REGISTRO DE ACTIVIDAD
@@ -504,13 +524,53 @@ export default function App() {
     );
   };
 
-  // Función para verificar si un artículo es "NUEVO" (menos de 7 días)
   const isNew = (article) => {
     if (!article.createdAt) return false;
     const createdDate = new Date(article.createdAt);
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     return createdDate > sevenDaysAgo;
+  };
+
+  // ==============================
+  // 🆕 IMPORTADOR DE ARCHIVOS (WORD/TXT)
+  // ==============================
+  const handleFileImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    setImportMessage("⏳ Procesando...");
+
+    try {
+      // Caso .txt
+      if (file.name.endsWith('.txt')) {
+        const text = await file.text();
+        setContent(text);
+        if (!title) setTitle(file.name.replace('.txt', ''));
+        setImportMessage("✅ Texto cargado correctamente");
+        alert("✅ Archivo .txt importado");
+      }
+      // Caso .docx
+      else if (file.name.endsWith('.docx')) {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        setContent(result.value);
+        if (!title) setTitle(file.name.replace('.docx', ''));
+        setImportMessage("✅ Documento Word cargado correctamente");
+        alert("✅ Documento .docx importado");
+      }
+      // Formato no soportado
+      else {
+        setImportMessage("⚠️ Solo se permiten archivos .docx o .txt");
+      }
+    } catch (err) {
+      console.error("Error importando archivo:", err);
+      setImportMessage("❌ Error al importar: " + err.message);
+    } finally {
+      setIsImporting(false);
+      e.target.value = null; // Resetear input para permitir re-selección
+    }
   };
 
   // ==============================
@@ -646,6 +706,35 @@ export default function App() {
               <button onClick={copyUidToClipboard} style={{ background: copiedUid ? "#22c55e" : "#64748b", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 4, fontSize: 11, cursor: "pointer", fontWeight: 500 }}>{copiedUid ? "✅ Copiado" : "📋 Copiar"}</button>
             </div>
             <button onClick={logout} style={btnDanger}>🚪 Cerrar sesión</button>
+          </div>
+
+          {/* 🆕 ZONA DE IMPORTACIÓN DE ARCHIVOS */}
+          <div style={{ background: "#fff", padding: 25, borderRadius: 12, maxWidth: 600, margin: "0 auto 30px auto", boxShadow: "0 6px 18px rgba(0,0,0,0.2)" }}>
+            <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif", marginBottom: 15 }}>📂 Importar Contenido</h2>
+            <p style={{ color: "#64748b", marginBottom: 15, textAlign: "center" }}>Sube un archivo <strong>.docx</strong> o <strong>.txt</strong> para extraer su texto automáticamente.</p>
+            
+            <label className="import-zone">
+              <div style={{ fontSize: 40, marginBottom: 10 }}>📄</div>
+              <p style={{ fontWeight: "bold", margin: 0, color: "#0f172a" }}>Haz clic para seleccionar archivo</p>
+              <input 
+                type="file" 
+                accept=".docx,.txt" 
+                onChange={handleFileImport} 
+                style={{ display: 'none' }} 
+              />
+            </label>
+            
+            {isImporting && <p style={{ textAlign: "center", color: "#1d4ed8", marginTop: 10, fontWeight: "bold" }}>⏳ Procesando archivo...</p>}
+            {importMessage && !isImporting && (
+              <p style={{ 
+                textAlign: "center", 
+                marginTop: 10, 
+                fontWeight: "bold",
+                color: importMessage.includes('✅') ? '#15803d' : importMessage.includes('⚠️') ? '#d97706' : '#b91c1c'
+              }}>
+                {importMessage}
+              </p>
+            )}
           </div>
 
           {/* ✍️ FORMULARIO ARTÍCULOS */}
