@@ -54,12 +54,67 @@ const btnPDF = {
   width: "100%", marginTop: 10, touchAction: "manipulation"
 };
 
-// Estilos responsive con media queries
+// Estilos CSS para el Accordion y Etiquetas
 const styles = `
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   button { transition: transform 0.1s, opacity 0.2s; }
   button:active { transform: scale(0.98); opacity: 0.9; }
 
+  /* BADGE NUEVO */
+  .badge-new {
+    display: inline-block;
+    background: linear-gradient(135deg, #fbbf24, #d97706);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 8px;
+    vertical-align: middle;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.8; }
+    100% { opacity: 1; }
+  }
+
+  /* ACCORDION */
+  .accordion-header {
+    background: #e2e8f0;
+    padding: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    transition: background 0.2s;
+    border-left: 5px solid #1d4ed8;
+  }
+  .accordion-header:hover { background: #cbd5e1; }
+  .accordion-header.active { border-left: 5px solid #fbbf24; background: #fff; }
+  
+  .accordion-icon { font-size: 20px; transition: transform 0.3s; }
+  .accordion-icon.open { transform: rotate(180deg); }
+
+  .accordion-content {
+    max-height: 2000px;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out, opacity 0.4s ease-out;
+    opacity: 1;
+  }
+  .accordion-content.closed {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* RESPONSIVE */
   @media (max-width: 640px) {
     .nav-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
     .nav-buttons button { width: 100%; margin: 0; padding: 16px 20px; font-size: 16px; }
@@ -115,6 +170,10 @@ export default function App() {
   
   // Estado para feedback de copiar UID
   const [copiedUid, setCopiedUid] = useState(false);
+
+  // 📂 Estado para el ACCORDION (Categorías abiertas)
+  // Por defecto abrimos la primera categoría para que no se vea vacío
+  const [openCategories, setOpenCategories] = useState(["Edad Antigua"]);
 
   // ==============================
   // 📝 REGISTRO DE ACTIVIDAD
@@ -369,7 +428,7 @@ export default function App() {
     } catch (err) { alert("❌ Error: " + err.message); }
   };
 
-  // 📥 EXPORTAR A PDF (NUEVO - FASE 1)
+  // 📥 EXPORTAR A PDF
   const exportToPDF = async (article) => {
     try {
       const { default: jsPDF } = await import('jspdf');
@@ -435,6 +494,26 @@ export default function App() {
   };
 
   // ==============================
+  // 🗂️ LÓGICA DE CATEGORÍAS Y "NUEVO"
+  // ==============================
+  const toggleCategory = (cat) => {
+    setOpenCategories(prev => 
+      prev.includes(cat) 
+        ? prev.filter(c => c !== cat) 
+        : [...prev, cat]
+    );
+  };
+
+  // Función para verificar si un artículo es "NUEVO" (menos de 7 días)
+  const isNew = (article) => {
+    if (!article.createdAt) return false;
+    const createdDate = new Date(article.createdAt);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return createdDate > sevenDaysAgo;
+  };
+
+  // ==============================
   // 🎨 UI
   // ==============================
   return (
@@ -482,41 +561,66 @@ export default function App() {
         </div>
       )}
 
-      {/* 📚 ARTÍCULOS */}
+      {/* 📚 ARTÍCULOS (ORDENADO POR ÉPOCAS) */}
       {view === "articles" && (
-        <>
+        <div style={{ maxWidth: 800, margin: "0 auto" }}>
           {CATEGORIES.map(cat => {
             const catArticles = articles.filter(a => a.category === cat);
             if (catArticles.length === 0) return null;
+            
+            const isOpen = openCategories.includes(cat);
+            const hasNew = catArticles.some(isNew);
+
             return (
-              <div key={cat} style={{ marginBottom: 30 }}>
-                <h2 style={{ color: "#1d4ed8", borderBottom: "2px solid #e2e8f0", paddingBottom: 5, fontFamily: "Georgia, serif" }}>📚 {cat}</h2>
-                {catArticles.map(a => (
-                  <div key={a.id} style={{ background: "#fff", padding: 15, marginBottom: 15, borderRadius: 10 }}>
-                    <h3 style={{ fontFamily: "Georgia, serif" }}>{a.title}</h3>
-                    <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{a.content}</p>
-                    {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 10, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
-                    
-                    {/* BOTONES DE EDICIÓN (solo para usuarios con permisos) */}
-                    {user && ((role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid))) && (
-                      <div className="article-actions" style={{ marginTop: 10 }}>
-                        <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
-                        <button onClick={() => removeArticle(a.id)} style={btnDanger}>🗑️ Eliminar</button>
-                        <button onClick={() => sendToTelegram(a)} style={{ ...btnPrimary, background: "#22c55e" }}>📤 Telegram</button>
-                      </div>
-                    )}
-                    
-                    {/* 📥 BOTÓN DE DESCARGA PDF - VISIBLE PARA TODOS */}
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e2e8f0" }}>
-                      <button onClick={() => exportToPDF(a)} style={btnPDF}>📥 Descargar como PDF</button>
-                    </div>
+              <div key={cat} style={{ marginBottom: 15 }}>
+                {/* CABECERA DE LA ÉPOCA (ACCORDION) */}
+                <div 
+                  className={`accordion-header ${isOpen ? 'active' : ''}`}
+                  onClick={() => toggleCategory(cat)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span className={`accordion-icon ${isOpen ? 'open' : ''}`}>▶</span>
+                    <h2 style={{ margin: 0, fontSize: "18px", color: "#1d4ed8" }}>📚 {cat}</h2>
+                    <span style={{ background: "#cbd5e1", borderRadius: 50, padding: "2px 8px", fontSize: 12, fontWeight: "bold" }}>
+                      {catArticles.length}
+                    </span>
                   </div>
-                ))}
+                  {hasNew && <span className="badge-new">🆕 NUEVO</span>}
+                </div>
+
+                {/* CONTENIDO DESPLEGABLE */}
+                <div className={`accordion-content ${isOpen ? '' : 'closed'}`}>
+                  {catArticles.map(a => (
+                    <div key={a.id} style={{ background: "#fff", padding: 15, marginBottom: 15, borderRadius: 10, borderLeft: "4px solid #e2e8f0" }}>
+                      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                        <h3 style={{ margin: 0, fontFamily: "Georgia, serif", color: "#020617" }}>{a.title}</h3>
+                        {isNew(a) && <span className="badge-new">✨ NUEVO</span>}
+                      </div>
+                      
+                      <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: 10 }}>{a.content}</p>
+                      {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 10, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
+                      
+                      {/* BOTONES DE EDICIÓN (solo para usuarios con permisos) */}
+                      {user && ((role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid))) && (
+                        <div className="article-actions" style={{ marginTop: 10 }}>
+                          <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
+                          <button onClick={() => removeArticle(a.id)} style={btnDanger}>🗑️ Eliminar</button>
+                          <button onClick={() => sendToTelegram(a)} style={{ ...btnPrimary, background: "#22c55e" }}>📤 Telegram</button>
+                        </div>
+                      )}
+                      
+                      {/* 📥 BOTÓN DE DESCARGA PDF - VISIBLE PARA TODOS */}
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e2e8f0" }}>
+                        <button onClick={() => exportToPDF(a)} style={btnPDF}>📥 Descargar como PDF</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           })}
           {articles.length === 0 && <p style={{ textAlign: "center", color: "#64748b" }}>No hay artículos publicados aún.</p>}
-        </>
+        </div>
       )}
 
       {/* 🔗 ENLACES */}
