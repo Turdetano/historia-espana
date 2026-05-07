@@ -48,13 +48,18 @@ const btnSecondary = {
   fontSize: "16px", minHeight: "48px", touchAction: "manipulation"
 };
 
-// Estilos responsive
+const btnPDF = {
+  background: "#0f172a", color: "#fff", padding: "10px 16px", borderRadius: 8,
+  border: "none", cursor: "pointer", fontWeight: "600", fontSize: "14px",
+  width: "100%", marginTop: 10, touchAction: "manipulation"
+};
+
+// Estilos responsive con media queries
 const styles = `
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   button { transition: transform 0.1s, opacity 0.2s; }
   button:active { transform: scale(0.98); opacity: 0.9; }
 
-  /* MÓVIL */
   @media (max-width: 640px) {
     .nav-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
     .nav-buttons button { width: 100%; margin: 0; padding: 16px 20px; font-size: 16px; }
@@ -70,7 +75,6 @@ const styles = `
     input, textarea, select { font-size: 16px !important; }
   }
 
-  /* TABLET */
   @media (min-width: 641px) and (max-width: 1024px) {
     .nav-buttons { flex-wrap: wrap; justify-content: center; gap: 10px; }
     .nav-buttons button { flex: 1 1 auto; min-width: 120px; }
@@ -78,7 +82,6 @@ const styles = `
     .article-actions button { flex: 1 1 auto; min-width: 100px; }
   }
 
-  /* DESKTOP */
   @media (min-width: 1025px) {
     .nav-buttons { display: flex; flex-direction: row; justify-content: center; gap: 0; }
     .nav-buttons button { margin-right: 10px; }
@@ -154,7 +157,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🔐 AUTENTICACIÓN + ROLES (BLINDADO)
+  // 🔐 AUTENTICACIÓN + ROLES
   // ==============================
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
@@ -163,58 +166,40 @@ export default function App() {
         console.log("🔍 Usuario detectado:", u.email, u.uid);
         try {
           let userRole = null;
-          
-          // 1. Buscar por UID (Método estándar)
           const uidRef = doc(db, "roles", u.uid);
           const uidSnap = await getDoc(uidRef);
           if (uidSnap.exists()) {
             userRole = uidSnap.data().role;
             console.log("✅ Rol encontrado por UID:", userRole);
-          } 
-          // 2. Buscar por Email (Migración y fallback)
-          else if (u.email) {
+          } else if (u.email) {
             const emailRef = doc(db, "roles", u.email);
             const emailSnap = await getDoc(emailRef);
             if (emailSnap.exists()) {
               userRole = emailSnap.data().role;
               console.log("✅ Rol encontrado por Email:", userRole);
-              
-              // Migrar automáticamente a UID para evitar errores futuros
-              await setDoc(uidRef, { 
-                role: userRole, 
-                email: u.email, 
-                migratedAt: new Date().toISOString() 
-              });
+              await setDoc(uidRef, { role: userRole, email: u.email, migratedAt: new Date().toISOString() });
               await deleteDoc(emailRef);
-              console.log("🔄 Rol migrado de Email a UID correctamente");
-            } else {
-              console.warn("⚠️ No se encontró rol ni por UID ni por Email:", u.email);
+              console.log("🔄 Rol migrado de Email a UID");
             }
           }
-
-          // 3. Si sigue sin tener rol, crear como lector (NUEVO USUARIO)
           if (!userRole) {
             await setDoc(uidRef, { role: "lector", email: u.email, createdAt: new Date().toISOString() });
             userRole = "lector";
-            console.log("🆕 Nuevo usuario creado como LECTOR");
-            logActivity("nuevo_registro", `Usuario registrado como lector: ${u.email}`);
-            // Solo mostrar alerta si es la primera vez
+            console.log("🆕 Nuevo usuario como LECTOR");
+            logActivity("nuevo_registro", `Usuario registrado: ${u.email}`);
             if (!localStorage.getItem('welcomed_' + u.uid)) {
-              alert("👋 Bienvenido. Cuenta creada como LECTOR. Contacta al admin.");
+              alert("👋 Bienvenido. Cuenta creada como LECTOR.");
               localStorage.setItem('welcomed_' + u.uid, 'true');
             }
           }
-
           setRole(userRole);
-          console.log("🔑 ROL FINAL ASIGNADO:", userRole);
-
+          console.log("🔑 ROL FINAL:", userRole);
         } catch (err) {
-          console.error("❌ Error verificando rol:", err);
+          console.error("❌ Error auth:", err);
           setRole("lector");
         }
       } else {
         setRole(null);
-        console.log("👋 Usuario cerrado sesión");
       }
     });
     return () => unsubscribe();
@@ -320,24 +305,14 @@ export default function App() {
   const publish = async () => {
     if (!checkAuth()) return;
     if (!title || !content) return alert("❌ Rellena título y contenido");
-    
     const imageUrl = image || "";
     const actionType = editingId ? "articulo_actualizado" : "articulo_creado";
-    
     if (editingId) {
-      await updateDoc(doc(db, "articles", editingId), {
-        title, content, category, image: imageUrl, updatedAt: new Date().toISOString()
-      });
+      await updateDoc(doc(db, "articles", editingId), { title, content, category, image: imageUrl, updatedAt: new Date().toISOString() });
     } else {
-      await addDoc(collection(db, "articles"), {
-        title, content, category, image: imageUrl,
-        date: new Date().toLocaleDateString(), author: user.email, authorId: user.uid,
-        createdAt: new Date().toISOString()
-      });
+      await addDoc(collection(db, "articles"), { title, content, category, image: imageUrl, date: new Date().toLocaleDateString(), author: user.email, authorId: user.uid, createdAt: new Date().toISOString() });
     }
-    
     logActivity(actionType, `"${title}" por ${user.email}`);
-    
     const snap = await getDocs(collection(db, "articles"));
     setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     setTitle(""); setContent(""); setImage(""); setEditingId(null);
@@ -370,45 +345,73 @@ export default function App() {
       return alert(`⏳ Anti-Spam: Espera ${waitSec}s.`);
     }
     if (!confirm("¿Enviar a Telegram?")) return;
-
     const BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
     const CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
     if (!BOT_TOKEN || !CHAT_ID) return alert("⚠️ Credenciales de Telegram faltantes.");
-
     const safeTitle = a.title.replace(/[*_`~[\]\\]/g, "");
     const safeContent = a.content.replace(/[*_`~[\]\\]/g, "");
     const safeCategory = a.category.replace(/[*_`~[\]\\]/g, "");
     const header = `📜 *${safeTitle}*\n📚 ${safeCategory}\n\n`;
-    
-    const splitMessage = (text, maxSize = 4000) => {
-      const chunks = [];
-      for (let i = 0; i < text.length; i += maxSize) chunks.push(text.substring(i, i + maxSize));
-      return chunks;
-    };
-
+    const splitMessage = (text, maxSize = 4000) => { const chunks = []; for (let i = 0; i < text.length; i += maxSize) chunks.push(text.substring(i, i + maxSize)); return chunks; };
     try {
       if (a.image) {
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: CHAT_ID, photo: a.image, caption: header + "👇 *Artículo completo* 👇", parse_mode: "Markdown" })
-        });
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: CHAT_ID, photo: a.image, caption: header + "👇 *Artículo completo* 👇", parse_mode: "Markdown" }) });
       }
-
       const fullContent = header + safeContent + `\n\n🔗 Ver en la web: ${window.location.origin}`;
       const chunks = splitMessage(fullContent);
-
       for (let i = 0; i < chunks.length; i++) {
         const suffix = i < chunks.length - 1 ? "\n\n*(continúa...)*" : "\n\n✅ *Fin*";
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: CHAT_ID, text: chunks[i] + suffix, parse_mode: "Markdown" })
-        });
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: CHAT_ID, text: chunks[i] + suffix, parse_mode: "Markdown" }) });
       }
-
       localStorage.setItem(`tg_cooldown_${user.uid}`, Date.now().toString());
       logActivity("telegram_enviado", `"${a.title}" enviado a Telegram`);
       alert("✅ Enviado a Telegram (Cooldown 5 min).");
     } catch (err) { alert("❌ Error: " + err.message); }
+  };
+
+  // 📥 EXPORTAR A PDF (NUEVO - FASE 1)
+  const exportToPDF = async (article) => {
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: html2canvas } = await import('html2canvas');
+
+      const tempDiv = document.createElement('div');
+      tempDiv.style.cssText = `position:absolute;left:-9999px;top:-9999px;width:794px;padding:40px;background:#fff;font-family:Georgia,serif;color:#111;line-height:1.6;`;
+      
+      tempDiv.innerHTML = `
+        <div style="text-align:center;border-bottom:3px solid #fbbf24;padding-bottom:20px;margin-bottom:30px;">
+          <h1 style="font-size:28px;color:#1e3a8a;margin:0;font-weight:900;">🏛️ HISPANIA IMPERIAL</h1>
+          <p style="font-size:16px;color:#7c2d12;margin:5px 0;font-style:italic;">PLUS ULTRA</p>
+        </div>
+        <h2 style="font-size:24px;color:#020617;margin:0 0 10px 0;font-weight:700;">${article.title}</h2>
+        <p style="font-size:14px;color:#64748b;margin:0 0 20px 0;">📚 ${article.category} • 📅 ${article.date} • ✍️ ${article.author}</p>
+        ${article.image ? `<img src="${article.image}" style="max-width:100%;height:auto;margin:20px 0;border-radius:8px;" crossorigin="anonymous" />` : ''}
+        <div style="font-size:15px;line-height:1.8;white-space:pre-wrap;margin:20px 0;">${article.content}</div>
+        <div style="margin-top:40px;padding-top:20px;border-top:2px solid #e2e8f0;text-align:center;font-size:12px;color:#64748b;">
+          <p style="margin:5px 0;">Documento generado desde Hispania Imperial</p>
+          <p style="margin:5px 0;">🔗 ${window.location.origin}</p>
+          <p style="margin:5px 0;font-style:italic;">"La historia bien contada es el mejor antídoto contra la leyenda"</p>
+        </div>
+      `;
+      
+      document.body.appendChild(tempDiv);
+      const canvas = await html2canvas(tempDiv, { scale: 2, useCORS: true, logging: false });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      
+      const filename = `HispaniaImperial-${article.title.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}.pdf`;
+      pdf.save(filename);
+      document.body.removeChild(tempDiv);
+      
+      logActivity('pdf_descargado', `"${article.title}" descargado por ${user?.email || 'visitante'}`);
+      alert('✅ PDF descargado correctamente');
+    } catch (err) {
+      console.error('❌ Error exportando a PDF:', err);
+      alert('❌ Error al generar PDF: ' + err.message);
+    }
   };
 
   // ==============================
@@ -436,12 +439,11 @@ export default function App() {
   // ==============================
   return (
     <div style={{ background: "#f1f5f9", minHeight: "100vh", padding: 20, fontFamily: "Segoe UI, Arial", color: "#111" }}>
-      {/* ESTILOS RESPONSIVE */}
       <style>{styles}</style>
       
       <h1 style={{ textAlign: "center", fontSize: "36px", fontWeight: "900", color: "#020617", fontFamily: "Georgia, serif" }}>📜 Historia de España</h1>
 
-      {/* NAVEGACIÓN RESPONSIVE */}
+      {/* NAVEGACIÓN */}
       <div className="nav-buttons" style={{ textAlign: "center", marginBottom: 20 }}>
         <button onClick={() => setView("home")} style={btnPrimary}>🏠 Inicio</button>
         <button onClick={() => setView("articles")} style={btnPrimary}>📚 Artículos</button>
@@ -495,7 +497,7 @@ export default function App() {
                     <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{a.content}</p>
                     {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 10, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
                     
-                    {/* BOTONES CON PERMISOS DE ADMIN/EDITOR */}
+                    {/* BOTONES DE EDICIÓN (solo para usuarios con permisos) */}
                     {user && ((role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid))) && (
                       <div className="article-actions" style={{ marginTop: 10 }}>
                         <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
@@ -503,6 +505,11 @@ export default function App() {
                         <button onClick={() => sendToTelegram(a)} style={{ ...btnPrimary, background: "#22c55e" }}>📤 Telegram</button>
                       </div>
                     )}
+                    
+                    {/* 📥 BOTÓN DE DESCARGA PDF - VISIBLE PARA TODOS */}
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e2e8f0" }}>
+                      <button onClick={() => exportToPDF(a)} style={btnPDF}>📥 Descargar como PDF</button>
+                    </div>
                   </div>
                 ))}
               </div>
