@@ -153,24 +153,41 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // --- CARGA DE DATOS ---
-  useEffect(() => {
-    const load = async (col, setter) => {
-      const snap = await getDocs(collection(db, col));
-      setter(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  // ==============================
+// CARGA DE DATOS (CORREGIDO)
+// ==============================
+useEffect(() => {
+  const loadData = async () => {
+    // Función auxiliar para cargar colecciones
+    const loadCollection = async (colName, setter) => {
+      try {
+        const snap = await getDocs(collection(db, colName));
+        setter(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (err) {
+        console.error(`Error cargando ${colName}:`, err);
+      }
     };
-    load("roles", setUsers);
-    load("articles", setArticles);
-    load("links", setLinks);
+
+    // Cargar datos básicos
+    await loadCollection("roles", setUsers);
+    await loadCollection("articles", setArticles);
+    await loadCollection("links", setLinks);
     
-    // Logs (Solo admin)
+    // Cargar logs SOLO si es admin/owner
     if (role === "owner" || role === "admin") {
-      const logSnap = await getDocs(collection(db, "activity_log"));
-      const logs = logSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      setActivityLogs(logs.slice(0, 50));
+      try {
+        const logSnap = await getDocs(collection(db, "activity_log"));
+        const logs = logSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        setActivityLogs(logs.slice(0, 50));
+      } catch (err) {
+        console.error("Error cargando logs:", err);
+      }
     }
-  }, [role]);
+  };
+
+  loadData(); // Ejecutar la función async
+}, [role]); // Se re-ejecuta cuando cambia el rol
 
   // --- FUNCIONES AUXILIARES ---
   const login = () => signInWithPopup(auth, provider);
