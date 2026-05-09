@@ -49,7 +49,7 @@ export const styles = `
   .search-input { width: 100%; padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 16px; margin-bottom: 15px; transition: border-color 0.2s; }
   .search-input:focus { outline: none; border-color: #1d4ed8; }
   .search-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .search-select { padding: 10px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; }
+    .search-select { padding: 10px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; color: #0f172a; }
   .search-select:focus { outline: none; border-color: #1d4ed8; }
   .search-results-info { font-size: 14px; color: #64748b; margin-top: 10px; font-style: italic; }
   @media (max-width: 640px) { .nav-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; } .nav-buttons button { width: 100%; margin: 0; padding: 16px 20px; font-size: 16px; } .article-actions { display: flex; flex-direction: column; gap: 8px; } .article-actions button { width: 100%; margin: 0; padding: 14px 16px; } .user-uid-box { flex-direction: column !important; gap: 8px !important; } .user-card { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; } .user-card-actions { display: flex; flex-direction: column; gap: 8px; } .user-card-actions button { width: 100%; } .search-filters { flex-direction: column; align-items: stretch; } .search-select { width: 100%; } h1 { font-size: 28px !important; } h2 { font-size: 22px !important; } input, textarea, select { font-size: 16px !important; } }
