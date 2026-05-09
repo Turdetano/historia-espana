@@ -9,8 +9,8 @@ import {
 import {
   signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged
 } from "firebase/auth";
-import { useState, useEffect } from "react";
-import mammoth from "mammoth"; // 🆕 Importador de Word/Txt
+import { useState, useEffect, useMemo } from "react";
+import mammoth from "mammoth";
 
 // ==============================
 // ⚙️ CONFIGURACIÓN GENERAL
@@ -55,13 +55,17 @@ const btnPDF = {
   width: "100%", marginTop: 10, touchAction: "manipulation"
 };
 
-// Estilos CSS para el Accordion y Etiquetas
+const btnFilter = {
+  background: "#fff", color: "#1e3a8a", padding: "10px 16px", borderRadius: 8,
+  border: "2px solid #1d4ed8", cursor: "pointer", fontWeight: "600", fontSize: "14px"
+};
+
+// Estilos CSS
 const styles = `
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   button { transition: transform 0.1s, opacity 0.2s; }
   button:active { transform: scale(0.98); opacity: 0.9; }
 
-  /* BADGE NUEVO */
   .badge-new {
     display: inline-block;
     background: linear-gradient(135deg, #fbbf24, #d97706);
@@ -84,7 +88,6 @@ const styles = `
     100% { opacity: 1; }
   }
 
-  /* ACCORDION */
   .accordion-header {
     background: #e2e8f0;
     padding: 15px;
@@ -115,7 +118,6 @@ const styles = `
     pointer-events: none;
   }
 
-  /* IMPORT ZONE */
   .import-zone {
     border: 2px dashed #94a3b8;
     border-radius: 12px;
@@ -131,6 +133,53 @@ const styles = `
     background: #eff6ff;
   }
 
+  /* SEARCH BAR */
+  .search-bar {
+    background: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
+  }
+  .search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-bottom: 15px;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: #1d4ed8;
+  }
+  .search-filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .search-select {
+    padding: 10px 14px;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    cursor: pointer;
+  }
+  .search-select:focus {
+    outline: none;
+    border-color: #1d4ed8;
+  }
+  .search-results-info {
+    font-size: 14px;
+    color: #64748b;
+    margin-top: 10px;
+    font-style: italic;
+  }
+
   /* RESPONSIVE */
   @media (max-width: 640px) {
     .nav-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
@@ -141,6 +190,8 @@ const styles = `
     .user-card { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
     .user-card-actions { display: flex; flex-direction: column; gap: 8px; }
     .user-card-actions button { width: 100%; }
+    .search-filters { flex-direction: column; align-items: stretch; }
+    .search-select { width: 100%; }
     h1 { font-size: 28px !important; }
     h2 { font-size: 22px !important; }
     .imperial-title { font-size: 36px !important; }
@@ -194,6 +245,11 @@ export default function App() {
   // 🆕 Estado para Importación
   const [isImporting, setIsImporting] = useState(false);
   const [importMessage, setImportMessage] = useState("");
+  
+  // 🔍 Estados para BUSCADOR
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchCategory, setSearchCategory] = useState("all");
+  const [sortBy, setSortBy] = useState("newest"); // 'newest' | 'oldest'
 
   // ==============================
   // 📝 REGISTRO DE ACTIVIDAD
@@ -533,7 +589,7 @@ export default function App() {
   };
 
   // ==============================
-  // 🆕 IMPORTADOR DE ARCHIVOS (WORD/TXT)
+  // 🆕 IMPORTADOR DE ARCHIVOS
   // ==============================
   const handleFileImport = async (e) => {
     const file = e.target.files[0];
@@ -543,25 +599,20 @@ export default function App() {
     setImportMessage("⏳ Procesando...");
 
     try {
-      // Caso .txt
       if (file.name.endsWith('.txt')) {
         const text = await file.text();
         setContent(text);
         if (!title) setTitle(file.name.replace('.txt', ''));
         setImportMessage("✅ Texto cargado correctamente");
         alert("✅ Archivo .txt importado");
-      }
-      // Caso .docx
-      else if (file.name.endsWith('.docx')) {
+      } else if (file.name.endsWith('.docx')) {
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer });
         setContent(result.value);
         if (!title) setTitle(file.name.replace('.docx', ''));
         setImportMessage("✅ Documento Word cargado correctamente");
         alert("✅ Documento .docx importado");
-      }
-      // Formato no soportado
-      else {
+      } else {
         setImportMessage("⚠️ Solo se permiten archivos .docx o .txt");
       }
     } catch (err) {
@@ -569,8 +620,54 @@ export default function App() {
       setImportMessage("❌ Error al importar: " + err.message);
     } finally {
       setIsImporting(false);
-      e.target.value = null; // Resetear input para permitir re-selección
+      e.target.value = null;
     }
+  };
+
+  // ==============================
+  // 🔍 LÓGICA DE BUSCADOR (MEMOIZED)
+  // ==============================
+  const filteredAndSortedArticles = useMemo(() => {
+    let result = [...articles];
+    
+    // Filtrar por término de búsqueda (título o contenido)
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(a => 
+        a.title.toLowerCase().includes(term) || 
+        a.content.toLowerCase().includes(term)
+      );
+    }
+    
+    // Filtrar por categoría
+    if (searchCategory !== "all") {
+      result = result.filter(a => a.category === searchCategory);
+    }
+    
+    // Ordenar por fecha
+    result.sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.date);
+      const dateB = new Date(b.createdAt || b.date);
+      return sortBy === "newest" ? dateB - dateA : dateA - dateB;
+    });
+    
+    return result;
+  }, [articles, searchTerm, searchCategory, sortBy]);
+
+  // Agrupar artículos filtrados por categoría para el accordion
+  const articlesByCategory = useMemo(() => {
+    const grouped = {};
+    CATEGORIES.forEach(cat => {
+      grouped[cat] = filteredAndSortedArticles.filter(a => a.category === cat);
+    });
+    return grouped;
+  }, [filteredAndSortedArticles]);
+
+  // Resetear filtros
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSearchCategory("all");
+    setSortBy("newest");
   };
 
   // ==============================
@@ -621,11 +718,51 @@ export default function App() {
         </div>
       )}
 
-      {/* 📚 ARTÍCULOS (ORDENADO POR ÉPOCAS) */}
+      {/* 📚 ARTÍCULOS CON BUSCADOR */}
       {view === "articles" && (
         <div style={{ maxWidth: 800, margin: "0 auto" }}>
+          
+          {/* 🔍 BARRA DE BÚSQUEDA */}
+          <div className="search-bar">
+            <input 
+              type="text" 
+              className="search-input"
+              placeholder="🔍 Buscar por título o contenido..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <div className="search-filters">
+              <select 
+                className="search-select"
+                value={searchCategory}
+                onChange={(e) => setSearchCategory(e.target.value)}
+              >
+                <option value="all">📚 Todas las épocas</option>
+                {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+              
+              <select 
+                className="search-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="newest">📅 Más recientes</option>
+                <option value="oldest">📅 Más antiguos</option>
+              </select>
+              
+              {(searchTerm || searchCategory !== "all" || sortBy !== "newest") && (
+                <button onClick={clearFilters} style={btnFilter}>🧹 Limpiar</button>
+              )}
+            </div>
+            <div className="search-results-info">
+              {filteredAndSortedArticles.length} resultado{filteredAndSortedArticles.length !== 1 ? 's' : ''} encontrado{filteredAndSortedArticles.length !== 1 ? 's' : ''}
+              {searchTerm && <span> para "{searchTerm}"</span>}
+            </div>
+          </div>
+
+          {/* ARTÍCULOS FILTRADOS POR CATEGORÍA */}
           {CATEGORIES.map(cat => {
-            const catArticles = articles.filter(a => a.category === cat);
+            const catArticles = articlesByCategory[cat];
             if (catArticles.length === 0) return null;
             
             const isOpen = openCategories.includes(cat);
@@ -679,7 +816,20 @@ export default function App() {
               </div>
             );
           })}
-          {articles.length === 0 && <p style={{ textAlign: "center", color: "#64748b" }}>No hay artículos publicados aún.</p>}
+
+          {/* SIN RESULTADOS */}
+          {filteredAndSortedArticles.length === 0 && (
+            <div style={{ textAlign: "center", padding: 40, background: "#fff", borderRadius: 12, border: "2px dashed #cbd5e1" }}>
+              <p style={{ fontSize: 40, marginBottom: 10 }}>🔍</p>
+              <p style={{ fontWeight: "bold", color: "#1e3a8a", marginBottom: 5 }}>No se encontraron artículos</p>
+              <p style={{ color: "#64748b", marginBottom: 15 }}>Intenta con otros términos o limpia los filtros</p>
+              <button onClick={clearFilters} style={btnPrimary}>🧹 Limpiar búsqueda</button>
+            </div>
+          )}
+          
+          {articles.length === 0 && filteredAndSortedArticles.length === 0 && (
+            <p style={{ textAlign: "center", color: "#64748b" }}>No hay artículos publicados aún.</p>
+          )}
         </div>
       )}
 
