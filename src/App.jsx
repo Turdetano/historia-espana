@@ -31,13 +31,11 @@ export const btnPrimary = {
   border: "none", cursor: "pointer", marginRight: 10, fontWeight: "bold", 
   fontSize: "16px", minHeight: "48px", touchAction: "manipulation" 
 };
-
 export const btnDanger = { 
   background: "#b91c1c", color: "#fff", padding: "14px 20px", borderRadius: 10, 
   border: "none", cursor: "pointer", fontWeight: "bold", 
   fontSize: "16px", minHeight: "48px", touchAction: "manipulation" 
 };
-
 export const btnPDF = { 
   background: "#0f172a", color: "#fff", padding: "10px 16px", borderRadius: 8, 
   border: "none", cursor: "pointer", fontWeight: "600", fontSize: "14px", 
@@ -66,7 +64,6 @@ export const styles = `
   .search-select { padding: 10px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; }
   .search-select:focus { outline: none; border-color: #1d4ed8; }
   .search-results-info { font-size: 14px; margin-top: 10px; font-style: italic; }
-  
   @media (max-width: 640px) { 
     .nav-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; } 
     .nav-buttons button { width: 100%; margin: 0; padding: 16px 20px; font-size: 16px; } 
@@ -148,22 +145,41 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // --- CARGA DE DATOS ---
+  // --- CARGA DE DATOS (CORREGIDO PARA ANÓNIMOS) ---
   useEffect(() => {
     const loadData = async () => {
-      const load = async (col, setter) => { const snap = await getDocs(collection(db, col)); setter(snap.docs.map(d => ({ id: d.id, ...d.data() }))); };
-      await load("roles", setUsers);
-      await load("articles", setArticles);
-      await load("links", setLinks);
-      if (role === "owner" || role === "admin") {
-        const logSnap = await getDocs(collection(db, "activity_log"));
-        const logs = logSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        setActivityLogs(logs.slice(0, 50));
+      // Función segura de carga con try-catch
+      const safeLoad = async (col, setter) => { 
+        try {
+          const snap = await getDocs(collection(db, col)); 
+          setter(snap.docs.map(d => ({ id: d.id, ...d.data() }))); 
+        } catch (err) {
+          // Ignorar errores de permisos para usuarios anónimos
+          if (err.code !== 'permission-denied') {
+            console.error(`Error loading ${col}:`, err);
+          }
+        }
+      };
+      
+      // 1️⃣ Cargar primero lo PÚBLICO (funciona para todos)
+      await safeLoad("articles", setArticles);
+      await safeLoad("links", setLinks);
+      
+      // 2️⃣ Cargar lo PRIVADO solo si hay usuario autenticado
+      if (user) {
+        await safeLoad("roles", setUsers);
+        if (role === "owner" || role === "admin") {
+          try {
+            const logSnap = await getDocs(collection(db, "activity_log"));
+            const logs = logSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            setActivityLogs(logs.slice(0, 50));
+          } catch (err) { console.error("Error logs:", err); }
+        }
       }
     };
     loadData();
-  }, [role]);
+  }, [role, user]); // Dependencias actualizadas
 
   // --- FUNCIONES TRACTOR ---
   const login = () => signInWithPopup(auth, provider);
@@ -259,46 +275,17 @@ export default function App() {
         <button onClick={() => setView("articles")} style={btnPrimary}>📚 Artículos</button>
         <button onClick={() => setView("links")} style={btnPrimary}>🔗 Enlaces</button>
         {(role === "owner" || role === "admin") && <button onClick={() => setView("admin")} style={btnDanger}>⚙️ Admin</button>}
-        
-        {/* 🌙 TOGGLE MODO OSCURO */}
-        <button 
-          onClick={toggleDarkMode} 
-          style={{
-            ...btnPrimary,
-            background: isDarkMode ? "#fbbf24" : "#475569",
-            color: isDarkMode ? "#0f172a" : "#fff"
-          }}
-        >
+        <button onClick={toggleDarkMode} style={{...btnPrimary, background: isDarkMode ? "#fbbf24" : "#475569", color: isDarkMode ? "#0f172a" : "#fff"}}>
           {isDarkMode ? "☀️ Claro" : "🌙 Oscuro"}
         </button>
       </div>
 
       {/* VISTAS */}
       {view === "home" && <HomeView login={login} setView={setView} user={user} isDarkMode={isDarkMode} />}
-      
-      {view === "articles" && (
-        <ArticlesView 
-          articles={articles} user={user} role={role} 
-          startEdit={startEdit} removeArticle={removeArticle} 
-          sendToTelegram={sendToTelegram} exportToPDF={exportToPDF} isNew={isNew}
-          isDarkMode={isDarkMode}
-        />
-      )}
-      
+      {view === "articles" && <ArticlesView articles={articles} user={user} role={role} startEdit={startEdit} removeArticle={removeArticle} sendToTelegram={sendToTelegram} exportToPDF={exportToPDF} isNew={isNew} isDarkMode={isDarkMode} />}
       {view === "links" && <LinksView links={links} isDarkMode={isDarkMode} />}
-      
       {view === "admin" && (role === "owner" || role === "admin") && (
-        <AdminView 
-          user={user} role={role} users={users} activityLogs={activityLogs}
-          title={title} setTitle={setTitle} content={content} setContent={setContent}
-          image={image} setImage={setImage} category={category} setCategory={setCategory}
-          editingId={editingId} setEditingId={setEditingId} CATEGORIES={CATEGORIES}
-          publish={publish} makeAdmin={makeAdmin} makeEditor={makeEditor} deleteUserRole={deleteUserRole} toggleRole={toggleRole}
-          copyUidToClipboard={copyUidToClipboard} copiedUid={copiedUid} logout={logout}
-          newLinkName={newLinkName} setNewLinkName={setNewLinkName} newLinkUrl={newLinkUrl} setNewLinkUrl={setNewLinkUrl}
-          addLink={addLink} removeLink={removeLink} links={links}
-          isDarkMode={isDarkMode}
-        />
+        <AdminView user={user} role={role} users={users} activityLogs={activityLogs} title={title} setTitle={setTitle} content={content} setContent={setContent} image={image} setImage={setImage} category={category} setCategory={setCategory} editingId={editingId} setEditingId={setEditingId} CATEGORIES={CATEGORIES} publish={publish} makeAdmin={makeAdmin} makeEditor={makeEditor} deleteUserRole={deleteUserRole} toggleRole={toggleRole} copyUidToClipboard={copyUidToClipboard} copiedUid={copiedUid} logout={logout} newLinkName={newLinkName} setNewLinkName={setNewLinkName} newLinkUrl={newLinkUrl} setNewLinkUrl={setNewLinkUrl} addLink={addLink} removeLink={removeLink} links={links} isDarkMode={isDarkMode} />
       )}
     </div>
   );
