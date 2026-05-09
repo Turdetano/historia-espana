@@ -26,34 +26,61 @@ const ADMIN_UID = "PVBWPZUwVwZnwAnaA5F0a6UuqF83";
 const CATEGORIES = ["Edad Antigua", "Edad Media", "Reconquista", "Imperio Español", "Edad Contemporánea"];
 
 // Estilos Globales
-export const btnPrimary = { background: "#1d4ed8", color: "#fff", padding: "14px 20px", borderRadius: 10, border: "none", cursor: "pointer", marginRight: 10, fontWeight: "bold", fontSize: "16px", minHeight: "48px", touchAction: "manipulation" };
-export const btnDanger = { background: "#b91c1c", color: "#fff", padding: "14px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: "bold", fontSize: "16px", minHeight: "48px", touchAction: "manipulation" };
-export const btnPDF = { background: "#0f172a", color: "#fff", padding: "10px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: "600", fontSize: "14px", width: "100%", marginTop: 10, touchAction: "manipulation" };
+export const btnPrimary = { 
+  background: "#1d4ed8", color: "#fff", padding: "14px 20px", borderRadius: 10, 
+  border: "none", cursor: "pointer", marginRight: 10, fontWeight: "bold", 
+  fontSize: "16px", minHeight: "48px", touchAction: "manipulation" 
+};
+
+export const btnDanger = { 
+  background: "#b91c1c", color: "#fff", padding: "14px 20px", borderRadius: 10, 
+  border: "none", cursor: "pointer", fontWeight: "bold", 
+  fontSize: "16px", minHeight: "48px", touchAction: "manipulation" 
+};
+
+export const btnPDF = { 
+  background: "#0f172a", color: "#fff", padding: "10px 16px", borderRadius: 8, 
+  border: "none", cursor: "pointer", fontWeight: "600", fontSize: "14px", 
+  width: "100%", marginTop: 10, touchAction: "manipulation" 
+};
 
 export const styles = `
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; transition: background-color 0.3s ease, color 0.3s ease; }
   button { transition: transform 0.1s, opacity 0.2s; }
   button:active { transform: scale(0.98); opacity: 0.9; }
   .badge-new { display: inline-block; background: linear-gradient(135deg, #fbbf24, #d97706); color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 8px; vertical-align: middle; box-shadow: 0 2px 4px rgba(0,0,0,0.2); animation: pulse 2s infinite; }
   @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
-  .accordion-header { background: #e2e8f0; padding: 15px; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; transition: background 0.2s; border-left: 5px solid #1d4ed8; }
-  .accordion-header:hover { background: #cbd5e1; }
-  .accordion-header.active { border-left: 5px solid #fbbf24; background: #fff; }
+  .accordion-header { padding: 15px; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; transition: background 0.2s; border-left: 5px solid #1d4ed8; }
+  .accordion-header:hover { opacity: 0.9; }
+  .accordion-header.active { border-left: 5px solid #fbbf24; }
   .accordion-icon { font-size: 20px; transition: transform 0.3s; }
   .accordion-icon.open { transform: rotate(180deg); }
   .accordion-content { max-height: 2000px; overflow: hidden; transition: max-height 0.4s ease-out, opacity 0.4s ease-out; opacity: 1; }
   .accordion-content.closed { max-height: 0; opacity: 0; pointer-events: none; }
-  .import-zone { border: 2px dashed #94a3b8; border-radius: 12px; padding: 25px; text-align: center; background: #f8fafc; margin-bottom: 25px; cursor: pointer; transition: all 0.2s; }
-  .import-zone:hover { border-color: #1d4ed8; background: #eff6ff; }
-  .search-bar { background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+  .import-zone { border: 2px dashed #94a3b8; border-radius: 12px; padding: 25px; text-align: center; margin-bottom: 25px; cursor: pointer; transition: all 0.2s; }
+  .import-zone:hover { border-color: #1d4ed8; }
+  .search-bar { padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
   .search-input { width: 100%; padding: 12px 16px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 16px; margin-bottom: 15px; transition: border-color 0.2s; }
   .search-input:focus { outline: none; border-color: #1d4ed8; }
   .search-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .search-select { padding: 10px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; color: #0f172a; }
+  .search-select { padding: 10px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; }
   .search-select:focus { outline: none; border-color: #1d4ed8; }
-  .search-results-info { font-size: 14px; color: #64748b; margin-top: 10px; font-style: italic; }
-  @media (max-width: 640px) { .nav-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; } .nav-buttons button { width: 100%; margin: 0; padding: 16px 20px; font-size: 16px; } .article-actions { display: flex; flex-direction: column; gap: 8px; } .article-actions button { width: 100%; margin: 0; padding: 14px 16px; } .user-uid-box { flex-direction: column !important; gap: 8px !important; } .user-card { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; } .user-card-actions { display: flex; flex-direction: column; gap: 8px; } .user-card-actions button { width: 100%; } .search-filters { flex-direction: column; align-items: stretch; } .search-select { width: 100%; } h1 { font-size: 28px !important; } h2 { font-size: 22px !important; } input, textarea, select { font-size: 16px !important; } }
-  @media (min-width: 1025px) { .nav-buttons { display: flex; flex-direction: row; justify-content: center; gap: 0; } .nav-buttons button { margin-right: 10px; } }
+  .search-results-info { font-size: 14px; margin-top: 10px; font-style: italic; }
+  
+  @media (max-width: 640px) { 
+    .nav-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; } 
+    .nav-buttons button { width: 100%; margin: 0; padding: 16px 20px; font-size: 16px; } 
+    .article-actions { display: flex; flex-direction: column; gap: 8px; } 
+    .article-actions button { width: 100%; margin: 0; padding: 14px 16px; } 
+    .search-filters { flex-direction: column; align-items: stretch; } 
+    .search-select { width: 100%; } 
+    h1 { font-size: 28px !important; } h2 { font-size: 22px !important; } 
+    input, textarea, select { font-size: 16px !important; } 
+  }
+  @media (min-width: 1025px) { 
+    .nav-buttons { display: flex; flex-direction: row; justify-content: center; gap: 0; } 
+    .nav-buttons button { margin-right: 10px; } 
+  }
 `;
 
 // ==============================
@@ -78,6 +105,18 @@ export default function App() {
   const [newLinkName, setNewLinkName] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [copiedUid, setCopiedUid] = useState(false);
+
+  // 🌙 ESTADO MODO OSCURO
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('hispania_dark_mode');
+    return saved ? JSON.parse(saved) : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hispania_dark_mode', JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => setIsDarkMode(prev => !prev);
 
   // --- AUTH & ROLES ---
   useEffect(() => {
@@ -202,10 +241,17 @@ export default function App() {
 
   // --- RENDER UI ---
   return (
-    <div style={{ background: "#f1f5f9", minHeight: "100vh", padding: 20, fontFamily: "Segoe UI, Arial", color: "#111" }}>
+    <div style={{ 
+      background: isDarkMode ? "#0f172a" : "#f1f5f9", 
+      minHeight: "100vh", 
+      padding: 20, 
+      fontFamily: "Segoe UI, Arial", 
+      color: isDarkMode ? "#e2e8f0" : "#111",
+      transition: "all 0.3s ease"
+    }}>
       <style>{styles}</style>
       
-      <h1 style={{ textAlign: "center", fontSize: "36px", fontWeight: "900", color: "#020617", fontFamily: "Georgia, serif" }}>📜 Historia de España</h1>
+      <h1 style={{ textAlign: "center", fontSize: "36px", fontWeight: "900", color: isDarkMode ? "#fbbf24" : "#020617", fontFamily: "Georgia, serif" }}>📜 Historia de España</h1>
 
       {/* NAV */}
       <div className="nav-buttons" style={{ textAlign: "center", marginBottom: 20 }}>
@@ -213,20 +259,33 @@ export default function App() {
         <button onClick={() => setView("articles")} style={btnPrimary}>📚 Artículos</button>
         <button onClick={() => setView("links")} style={btnPrimary}>🔗 Enlaces</button>
         {(role === "owner" || role === "admin") && <button onClick={() => setView("admin")} style={btnDanger}>⚙️ Admin</button>}
+        
+        {/* 🌙 TOGGLE MODO OSCURO */}
+        <button 
+          onClick={toggleDarkMode} 
+          style={{
+            ...btnPrimary,
+            background: isDarkMode ? "#fbbf24" : "#475569",
+            color: isDarkMode ? "#0f172a" : "#fff"
+          }}
+        >
+          {isDarkMode ? "☀️ Claro" : "🌙 Oscuro"}
+        </button>
       </div>
 
       {/* VISTAS */}
-      {view === "home" && <HomeView login={login} setView={setView} user={user} />}
+      {view === "home" && <HomeView login={login} setView={setView} user={user} isDarkMode={isDarkMode} />}
       
       {view === "articles" && (
         <ArticlesView 
           articles={articles} user={user} role={role} 
           startEdit={startEdit} removeArticle={removeArticle} 
-          sendToTelegram={sendToTelegram} exportToPDF={exportToPDF} isNew={isNew} 
+          sendToTelegram={sendToTelegram} exportToPDF={exportToPDF} isNew={isNew}
+          isDarkMode={isDarkMode}
         />
       )}
       
-      {view === "links" && <LinksView links={links} />}
+      {view === "links" && <LinksView links={links} isDarkMode={isDarkMode} />}
       
       {view === "admin" && (role === "owner" || role === "admin") && (
         <AdminView 
@@ -238,6 +297,7 @@ export default function App() {
           copyUidToClipboard={copyUidToClipboard} copiedUid={copiedUid} logout={logout}
           newLinkName={newLinkName} setNewLinkName={setNewLinkName} newLinkUrl={newLinkUrl} setNewLinkUrl={setNewLinkUrl}
           addLink={addLink} removeLink={removeLink} links={links}
+          isDarkMode={isDarkMode}
         />
       )}
     </div>

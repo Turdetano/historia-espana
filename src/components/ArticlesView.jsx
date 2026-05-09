@@ -1,15 +1,21 @@
 import { useState, useMemo } from 'react';
-import { btnPrimary, btnDanger, btnPDF, styles } from '../App'; // Importamos estilos compartidos
+import { btnPrimary, btnDanger, btnPDF } from '../App'; 
 
 // Componente interno para la tarjeta de artículo
-function ArticleCard({ a, user, role, startEdit, removeArticle, sendToTelegram, exportToPDF, isNew }) {
+function ArticleCard({ a, user, role, startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode }) {
   return (
-    <div style={{ background: "#fff", padding: 15, marginBottom: 15, borderRadius: 10, borderLeft: "4px solid #e2e8f0" }}>
+    <div style={{ 
+      background: isDarkMode ? "#1e293b" : "#fff", 
+      padding: 15, 
+      marginBottom: 15, 
+      borderRadius: 10, 
+      borderLeft: `4px solid ${isDarkMode ? "#475569" : "#e2e8f0"}` 
+    }}>
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-        <h3 style={{ margin: 0, fontFamily: "Georgia, serif", color: "#020617" }}>{a.title}</h3>
+        <h3 style={{ margin: 0, fontFamily: "Georgia, serif", color: isDarkMode ? "#f1f5f9" : "#020617" }}>{a.title}</h3>
         {isNew(a) && <span className="badge-new">✨ NUEVO</span>}
       </div>
-      <div style={{ lineHeight: 1.6, color: "#334155", marginTop: 10 }} dangerouslySetInnerHTML={{ __html: a.content }} />
+      <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6, color: isDarkMode ? "#cbd5e1" : "#334155", marginTop: 10 }} dangerouslySetInnerHTML={{ __html: a.content }} />
       {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 10, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
       
       {user && ((role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid))) && (
@@ -19,14 +25,14 @@ function ArticleCard({ a, user, role, startEdit, removeArticle, sendToTelegram, 
           <button onClick={() => sendToTelegram(a)} style={{ ...btnPrimary, background: "#22c55e" }}>📤 Telegram</button>
         </div>
       )}
-      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e2e8f0" }}>
+      <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${isDarkMode ? "#475569" : "#e2e8f0"}` }}>
         <button onClick={() => exportToPDF(a)} style={btnPDF}>📥 Descargar como PDF</button>
       </div>
     </div>
   );
 }
 
-export default function ArticlesView({ articles, user, role, startEdit, removeArticle, sendToTelegram, exportToPDF, isNew }) {
+export default function ArticlesView({ articles, user, role, startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchCategory, setSearchCategory] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
@@ -34,7 +40,6 @@ export default function ArticlesView({ articles, user, role, startEdit, removeAr
 
   const CATEGORIES = ["Edad Antigua", "Edad Media", "Reconquista", "Imperio Español", "Edad Contemporánea"];
 
-  // Lógica del Buscador
   const filteredAndSortedArticles = useMemo(() => {
     let result = [...articles];
     if (searchTerm.trim()) {
@@ -67,22 +72,54 @@ export default function ArticlesView({ articles, user, role, startEdit, removeAr
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
       {/* 🔍 BARRA DE BÚSQUEDA */}
-      <div className="search-bar">
-        <input type="text" className="search-input" placeholder="🔍 Buscar por título o contenido..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+      <div className="search-bar" style={{ 
+        background: isDarkMode ? "#1e293b" : "#fff",
+        border: `1px solid ${isDarkMode ? "#334155" : "#e2e8f0"}`
+      }}>
+        <input 
+          type="text" 
+          className="search-input" 
+          placeholder="🔍 Buscar por título o contenido..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            background: isDarkMode ? "#0f172a" : "#fff",
+            color: isDarkMode ? "#e2e8f0" : "#111",
+            border: `2px solid ${isDarkMode ? "#475569" : "#cbd5e1"}`
+          }}
+        />
         <div className="search-filters">
-          <select className="search-select" value={searchCategory} onChange={(e) => setSearchCategory(e.target.value)}>
+          <select 
+            className="search-select"
+            value={searchCategory}
+            onChange={(e) => setSearchCategory(e.target.value)}
+            style={{
+              background: isDarkMode ? "#0f172a" : "#fff",
+              color: isDarkMode ? "#e2e8f0" : "#111",
+              border: `2px solid ${isDarkMode ? "#475569" : "#cbd5e1"}`
+            }}
+          >
             <option value="all">📚 Todas las épocas</option>
             {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
           </select>
-          <select className="search-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <select 
+            className="search-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{
+              background: isDarkMode ? "#0f172a" : "#fff",
+              color: isDarkMode ? "#e2e8f0" : "#111",
+              border: `2px solid ${isDarkMode ? "#475569" : "#cbd5e1"}`
+            }}
+          >
             <option value="newest">📅 Más recientes</option>
             <option value="oldest">📅 Más antiguos</option>
           </select>
           {(searchTerm || searchCategory !== "all" || sortBy !== "newest") && (
-            <button onClick={clearFilters} style={{...btnPrimary, background: "#fff", color: "#1e3a8a", border: "2px solid #1d4ed8", padding: "10px 16px"}}>🧹 Limpiar</button>
+            <button onClick={clearFilters} style={{...btnPrimary, background: isDarkMode ? "#fff" : "#fff", color: "#1e3a8a", border: `2px solid ${isDarkMode ? "#fbbf24" : "#1d4ed8"}`, padding: "10px 16px"}}>🧹 Limpiar</button>
           )}
         </div>
-        <div className="search-results-info">
+        <div className="search-results-info" style={{ color: isDarkMode ? "#94a3b8" : "#64748b" }}>
           {filteredAndSortedArticles.length} resultado{filteredAndSortedArticles.length !== 1 ? 's' : ''} encontrado{filteredAndSortedArticles.length !== 1 ? 's' : ''}
           {searchTerm && <span> para "{searchTerm}"</span>}
         </div>
@@ -97,17 +134,35 @@ export default function ArticlesView({ articles, user, role, startEdit, removeAr
 
         return (
           <div key={cat} style={{ marginBottom: 15 }}>
-            <div className={`accordion-header ${isOpen ? 'active' : ''}`} onClick={() => toggleCategory(cat)}>
+            <div 
+              className={`accordion-header ${isOpen ? 'active' : ''}`} 
+              onClick={() => toggleCategory(cat)}
+              style={{
+                background: isDarkMode ? "#1e293b" : "#e2e8f0",
+                borderLeft: `5px solid ${isDarkMode ? "#fbbf24" : "#1d4ed8"}`
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span className={`accordion-icon ${isOpen ? 'open' : ''}`}>▶</span>
-                <h2 style={{ margin: 0, fontSize: "18px", color: "#1d4ed8" }}>📚 {cat}</h2>
-                <span style={{ background: "#cbd5e1", borderRadius: 50, padding: "2px 8px", fontSize: 12, fontWeight: "bold" }}>{catArticles.length}</span>
+                <h2 style={{ margin: 0, fontSize: "18px", color: isDarkMode ? "#60a5fa" : "#1d4ed8" }}>📚 {cat}</h2>
+                <span style={{ background: isDarkMode ? "#475569" : "#cbd5e1", borderRadius: 50, padding: "2px 8px", fontSize: 12, fontWeight: "bold", color: isDarkMode ? "#e2e8f0" : "#1e293b" }}>{catArticles.length}</span>
               </div>
               {hasNew && <span className="badge-new">🆕 NUEVO</span>}
             </div>
             <div className={`accordion-content ${isOpen ? '' : 'closed'}`}>
               {catArticles.map(a => (
-                <ArticleCard key={a.id} a={a} user={user} role={role} startEdit={startEdit} removeArticle={removeArticle} sendToTelegram={sendToTelegram} exportToPDF={exportToPDF} isNew={isNew} />
+                <ArticleCard 
+                  key={a.id} 
+                  a={a} 
+                  user={user} 
+                  role={role} 
+                  startEdit={startEdit} 
+                  removeArticle={removeArticle} 
+                  sendToTelegram={sendToTelegram} 
+                  exportToPDF={exportToPDF} 
+                  isNew={isNew}
+                  isDarkMode={isDarkMode} 
+                />
               ))}
             </div>
           </div>
@@ -115,9 +170,9 @@ export default function ArticlesView({ articles, user, role, startEdit, removeAr
       })}
 
       {filteredAndSortedArticles.length === 0 && (
-        <div style={{ textAlign: "center", padding: 40, background: "#fff", borderRadius: 12, border: "2px dashed #cbd5e1" }}>
+        <div style={{ textAlign: "center", padding: 40, background: isDarkMode ? "#1e293b" : "#fff", borderRadius: 12, border: `2px dashed ${isDarkMode ? "#475569" : "#cbd5e1"}` }}>
           <p style={{ fontSize: 40, marginBottom: 10 }}>🔍</p>
-          <p style={{ fontWeight: "bold", color: "#1e3a8a", marginBottom: 5 }}>No se encontraron artículos</p>
+          <p style={{ fontWeight: "bold", color: isDarkMode ? "#60a5fa" : "#1e3a8a", marginBottom: 5 }}>No se encontraron artículos</p>
           <button onClick={clearFilters} style={btnPrimary}>🧹 Limpiar búsqueda</button>
         </div>
       )}
