@@ -1,11 +1,24 @@
 import { useState } from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css'; // Estilos del editor
 import mammoth from 'mammoth';
 import { btnPrimary, btnDanger } from '../App';
 
-export default function AdminView({ user, role, users, activityLogs, title, setTitle, content, setContent, image, setImage, category, setCategory, editingId, setEditingId, CATEGORIES, publish, startEdit, removeArticle, makeAdmin, makeEditor, deleteUserRole, toggleRole, copyUidToClipboard, copiedUid, logout, newLinkName, setNewLinkName, newLinkUrl, setNewLinkUrl, addLink, removeLink, links, exportToPDF }) {
+export default function AdminView({ user, role, users, activityLogs, title, setTitle, content, setContent, image, setImage, category, setCategory, editingId, setEditingId, CATEGORIES, publish, makeAdmin, makeEditor, deleteUserRole, toggleRole, copyUidToClipboard, copiedUid, logout, newLinkName, setNewLinkName, newLinkUrl, setNewLinkUrl, addLink, removeLink, links }) {
   
   const [isImporting, setIsImporting] = useState(false);
   const [importMessage, setImportMessage] = useState("");
+
+  // Configuración de la barra de herramientas
+  const modules = {
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      ['blockquote', 'code-block'],
+      ['clean']
+    ],
+  };
 
   const handleFileImport = async (e) => {
     const file = e.target.files[0];
@@ -15,17 +28,19 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
     try {
       if (file.name.endsWith('.txt')) {
         const text = await file.text();
-        setContent(text);
+        // Convertimos saltos de línea a HTML simple
+        setContent(text.replace(/\n/g, '<br>'));
         if (!title) setTitle(file.name.replace('.txt', ''));
         setImportMessage("✅ Texto cargado");
       } else if (file.name.endsWith('.docx')) {
         const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({ arrayBuffer });
+        // 🆕 USAMOS convertToHtml PARA CONSERVAR NEGRITAS Y LISTAS
+        const result = await mammoth.convertToHtml({ arrayBuffer });
         setContent(result.value);
         if (!title) setTitle(file.name.replace('.docx', ''));
-        setImportMessage("✅ Word cargado");
+        setImportMessage("✅ Word cargado (Formato conservado)");
       } else { setImportMessage("⚠️ Solo .docx o .txt"); }
-    } catch (err) { setImportMessage("❌ Error"); }
+    } catch (err) { setImportMessage("❌ Error"); console.error(err); }
     finally { setIsImporting(false); e.target.value = null; }
   };
 
@@ -47,7 +62,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
       {/* IMPORTADOR */}
       <div style={cardStyle}>
         <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif", marginBottom: 15 }}>📂 Importar Contenido</h2>
-        <p style={{ color: "#64748b", marginBottom: 15, textAlign: "center" }}>Sube un archivo <strong>.docx</strong> o <strong>.txt</strong> para extraer su texto automáticamente.</p>
+        <p style={{ color: "#64748b", marginBottom: 15, textAlign: "center" }}>Sube un archivo <strong>.docx</strong> o <strong>.txt</strong>. Las negritas y listas se conservarán.</p>
         <label className="import-zone">
           <div style={{ fontSize: 40, marginBottom: 10 }}>📄</div>
           <p style={{ fontWeight: "bold", margin: 0, color: "#0f172a" }}>Haz clic para seleccionar archivo</p>
@@ -57,22 +72,36 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
         {importMessage && !isImporting && <p style={{ textAlign: "center", marginTop: 10, fontWeight: "bold", color: importMessage.includes('✅') ? '#15803d' : '#b91c1c' }}>{importMessage}</p>}
       </div>
 
-      {/* EDITOR */}
+      {/* ✍️ EDITOR ENRIQUECIDO */}
       <div style={cardStyle}>
         <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>✍️ {editingId ? "Editar artículo" : "Crear artículo"}</h2>
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título" style={inputStyle} />
-        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Contenido" style={{...inputStyle, minHeight: 120}} />
+        
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Título del artículo" style={inputStyle} />
+        
+        {/* REACT QUILL EDITOR */}
+        <div style={{ marginBottom: 15, background: "#fff", borderRadius: 8, border: "1px solid #cbd5e1" }}>
+           <ReactQuill 
+             theme="snow" 
+             value={content} 
+             onChange={setContent} 
+             modules={modules}
+             style={{ height: "300px", marginBottom: "50px" }} // Altura para la barra de herramientas
+           />
+        </div>
+
         <select value={category} onChange={e => setCategory(e.target.value)} style={inputStyle}>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
         </select>
-        <input value={image} onChange={e => setImage(e.target.value)} placeholder="URL de Cloudinary" style={inputStyle} />
+        
+        <input value={image} onChange={e => setImage(e.target.value)} placeholder="URL de Imagen (Cloudinary)" style={inputStyle} />
         {image && <img src={image} style={{ maxWidth: "100%", maxHeight: 150, marginTop: 10, borderRadius: 8, objectFit: "cover" }} alt="Preview" onError={(e) => { e.target.style.display = 'none'; }} />}
+        
         <br /><br />
         <button onClick={publish} style={btnPrimary}>{editingId ? "💾 Guardar cambios" : "🚀 Publicar"}</button>
         {editingId && <button onClick={() => { setEditingId(null); setTitle(""); setContent(""); setImage(""); }} style={{ ...btnDanger, marginLeft: 10 }}>Cancelar</button>}
       </div>
 
-      {/* USUARIOS */}
+      {/* GESTIÓN USUARIOS (Igual que antes) */}
       <div style={cardStyle}>
         <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>👤 Usuarios del sistema</h2>
         <div style={{ marginTop: 15, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -96,7 +125,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
         </div>
       </div>
 
-      {/* ENLACES */}
+      {/* GESTIÓN ENLACES (Igual que antes) */}
       <div style={cardStyle}>
         <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>🔧 Gestionar Enlaces</h2>
         <div style={{ marginTop: 15, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -114,7 +143,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
         </div>
       </div>
 
-      {/* LOGS */}
+      {/* LOGS (Igual que antes) */}
       <div style={cardStyle}>
         <h2 style={{ color: "#020617", background: "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>📜 Registro de Actividad</h2>
         <div style={{ marginTop: 15, maxHeight: 300, overflowY: "auto", background: "#f8fafc", padding: 10, borderRadius: 8 }}>

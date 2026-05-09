@@ -9,7 +9,7 @@ function ArticleCard({ a, user, role, startEdit, removeArticle, sendToTelegram, 
         <h3 style={{ margin: 0, fontFamily: "Georgia, serif", color: "#020617" }}>{a.title}</h3>
         {isNew(a) && <span className="badge-new">✨ NUEVO</span>}
       </div>
-      <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: 10 }}>{a.content}</p>
+      <div style={{ lineHeight: 1.6, color: "#334155", marginTop: 10 }} dangerouslySetInnerHTML={{ __html: a.content }} />
       {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 10, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
       
       {user && ((role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid))) && (
