@@ -16,6 +16,7 @@ import HomeView from "./components/HomeView";
 import ArticlesView from "./components/ArticlesView";
 import LinksView from "./components/LinksView";
 import AdminView from "./components/AdminView";
+import AboutView from "./components/AboutView"; // 🆕 NUEVO: Página Sobre el Proyecto
 
 // ==============================
 // ⚙️ CONFIGURACIÓN
@@ -179,7 +180,7 @@ export default function App() {
       }
     };
     loadData();
-  }, [role, user]); // Dependencias actualizadas
+  }, [role, user]);
 
   // --- FUNCIONES TRACTOR ---
   const login = () => signInWithPopup(auth, provider);
@@ -274,6 +275,7 @@ export default function App() {
         <button onClick={() => setView("home")} style={btnPrimary}>🏠 Inicio</button>
         <button onClick={() => setView("articles")} style={btnPrimary}>📚 Artículos</button>
         <button onClick={() => setView("links")} style={btnPrimary}>🔗 Enlaces</button>
+        <button onClick={() => setView("about")} style={btnPrimary}>📜 Sobre el Proyecto</button> {/* 🆕 NUEVO */}
         {(role === "owner" || role === "admin") && <button onClick={() => setView("admin")} style={btnDanger}>⚙️ Admin</button>}
         <button onClick={toggleDarkMode} style={{...btnPrimary, background: isDarkMode ? "#fbbf24" : "#475569", color: isDarkMode ? "#0f172a" : "#fff"}}>
           {isDarkMode ? "☀️ Claro" : "🌙 Oscuro"}
@@ -282,10 +284,32 @@ export default function App() {
 
       {/* VISTAS */}
       {view === "home" && <HomeView login={login} setView={setView} user={user} isDarkMode={isDarkMode} />}
-      {view === "articles" && <ArticlesView articles={articles} user={user} role={role} startEdit={startEdit} removeArticle={removeArticle} sendToTelegram={sendToTelegram} exportToPDF={exportToPDF} isNew={isNew} isDarkMode={isDarkMode} />}
+      
+      {view === "about" && <AboutView setView={setView} isDarkMode={isDarkMode} />} {/* 🆕 NUEVO */}
+
+      {view === "articles" && (
+        <ArticlesView 
+          articles={articles} user={user} role={role} 
+          startEdit={startEdit} removeArticle={removeArticle} 
+          sendToTelegram={sendToTelegram} exportToPDF={exportToPDF} isNew={isNew}
+          isDarkMode={isDarkMode}
+        />
+      )}
+      
       {view === "links" && <LinksView links={links} isDarkMode={isDarkMode} />}
+      
       {view === "admin" && (role === "owner" || role === "admin") && (
-        <AdminView user={user} role={role} users={users} activityLogs={activityLogs} title={title} setTitle={setTitle} content={content} setContent={setContent} image={image} setImage={setImage} category={category} setCategory={setCategory} editingId={editingId} setEditingId={setEditingId} CATEGORIES={CATEGORIES} publish={publish} makeAdmin={makeAdmin} makeEditor={makeEditor} deleteUserRole={deleteUserRole} toggleRole={toggleRole} copyUidToClipboard={copyUidToClipboard} copiedUid={copiedUid} logout={logout} newLinkName={newLinkName} setNewLinkName={setNewLinkName} newLinkUrl={newLinkUrl} setNewLinkUrl={setNewLinkUrl} addLink={addLink} removeLink={removeLink} links={links} isDarkMode={isDarkMode} />
+        <AdminView 
+          user={user} role={role} users={users} activityLogs={activityLogs}
+          title={title} setTitle={setTitle} content={content} setContent={setContent}
+          image={image} setImage={setImage} category={category} setCategory={setCategory}
+          editingId={editingId} setEditingId={setEditingId} CATEGORIES={CATEGORIES}
+          publish={publish} makeAdmin={makeAdmin} makeEditor={makeEditor} deleteUserRole={deleteUserRole} toggleRole={toggleRole}
+          copyUidToClipboard={copyUidToClipboard} copiedUid={copiedUid} logout={logout}
+          newLinkName={newLinkName} setNewLinkName={setNewLinkName} newLinkUrl={newLinkUrl} setNewLinkUrl={setNewLinkUrl}
+          addLink={addLink} removeLink={removeLink} links={links}
+          isDarkMode={isDarkMode}
+        />
       )}
     </div>
   );

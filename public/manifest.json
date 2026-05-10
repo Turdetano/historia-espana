@@ -1,0 +1,21 @@
+{
+  "name": "Hispania Imperial",
+  "short_name": "Hispania",
+  "description": "Historia de España sin Leyenda Negra. Artículos rigurosos, fuentes verificables, Plus Ultra.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#1e3a8a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "history", "reference"],
+  "lang": "es",
+  "dir": "ltr"
+}
