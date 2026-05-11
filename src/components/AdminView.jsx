@@ -3,7 +3,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import mammoth from 'mammoth';
-import { btnPrimary, btnDanger } from '../App'; // ✅ Solo importamos estilos del App
+import { btnPrimary, btnDanger } from '../App';
 
 // Estilos de la barra de herramientas del editor
 const ToolbarButton = ({ active, onClick, children }) => (
@@ -76,6 +76,35 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
     finally { setIsImporting(false); e.target.value = null; }
   };
 
+  // 🆕 FUNCIÓN PARA CARGAR LA PLANTILLA ESTRUCTURADA
+  const loadEditorTemplate = () => {
+    if (!editor) return;
+    const template = `
+      <h2>📖 Introducción</h2>
+      <p>Escribe aquí una entradilla potente que resuma el artículo y enganche al lector.</p>
+      
+      <h2>🏛️ Contexto Histórico</h2>
+      <p>Sitúa al lector en la época. ¿Dónde? ¿Cuándo? ¿Por qué es importante?</p>
+      
+      <h2>⚔️ Desarrollo de los Hechos</h2>
+      <p>Cuerpo principal del artículo. Usa párrafos cortos.</p>
+      <ul>
+        <li>Dato relevante 1</li>
+        <li>Dato relevante 2</li>
+      </ul>
+      
+      <h2>📜 Conclusión</h2>
+      <p>Cierre del artículo reflexionando sobre el impacto histórico.</p>
+      
+      <blockquote>
+        <p><strong>Fuentes consultadas:</strong> Lista aquí tus referencias bibliográficas para garantizar el rigor.</p>
+      </blockquote>
+    `;
+    editor.commands.setContent(template);
+    setImportMessage("📄 Plantilla cargada. ¡A escribir!");
+    setTimeout(() => setImportMessage(""), 3000);
+  };
+
   const inputStyle = { 
     width: "100%", padding: "12px", marginBottom: "15px", borderRadius: "8px", 
     border: `1px solid ${isDarkMode ? "#475569" : "#cbd5e1"}`, 
@@ -117,7 +146,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
           <input type="file" accept=".docx,.txt" onChange={handleFileImport} style={{ display: 'none' }} />
         </label>
         {isImporting && <p style={{ textAlign: "center", color: "#60a5fa", marginTop: 10, fontWeight: "bold" }}>⏳ Procesando archivo...</p>}
-        {importMessage && !isImporting && <p style={{ textAlign: "center", marginTop: 10, fontWeight: "bold", color: importMessage.includes('✅') ? '#15803d' : '#b91c1c' }}>{importMessage}</p>}
+        {importMessage && !isImporting && <p style={{ textAlign: "center", marginTop: 10, fontWeight: "bold", color: importMessage.includes('✅') || importMessage.includes('Plantilla') ? '#15803d' : '#b91c1c' }}>{importMessage}</p>}
       </div>
 
       {/* ✍️ EDITOR ENRIQUECIDO */}
@@ -153,8 +182,27 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
         {image && <img src={image} style={{ maxWidth: "100%", maxHeight: 150, marginTop: 10, borderRadius: 8, objectFit: "cover" }} alt="Preview" onError={(e) => { e.target.style.display = 'none'; }} />}
         
         <br /><br />
-        <button onClick={publish} style={btnPrimary}>{editingId ? "💾 Guardar cambios" : "🚀 Publicar"}</button>
-        {editingId && <button onClick={() => { setEditingId(null); setTitle(""); setContent(""); setImage(""); if(editor) editor.commands.clearContent(); }} style={{ ...btnDanger, marginLeft: 10 }}>Cancelar</button>}
+        
+        {/* BOTONES DE ACCIÓN */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 15 }}>
+          <button onClick={publish} style={btnPrimary}>{editingId ? "💾 Guardar cambios" : "🚀 Publicar"}</button>
+          {editingId && <button onClick={() => { setEditingId(null); setTitle(""); setContent(""); setImage(""); if(editor) editor.commands.clearContent(); }} style={{ ...btnDanger, marginLeft: 10 }}>Cancelar</button>}
+          
+          {/* 🆕 BOTÓN NUEVO: CARGAR PLANTILLA */}
+          {!editingId && (
+            <button 
+              onClick={loadEditorTemplate} 
+              style={{
+                ...btnPrimary, 
+                background: isDarkMode ? "#064e3b" : "#ecfdf5", 
+                color: isDarkMode ? "#6ee7b7" : "#065f46",
+                border: `1px solid ${isDarkMode ? "#10b981" : "#34d399"}`
+              }}
+            >
+              📄 Cargar Plantilla de Calidad
+            </button>
+          )}
+        </div>
       </div>
 
       {/* GESTIÓN USUARIOS */}
