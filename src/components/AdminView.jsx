@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Image from '@tiptap/extension-image'; // 🆕 NUEVO: Extensión de imagen
 import mammoth from 'mammoth';
 import { btnPrimary, btnDanger } from '../App';
 
@@ -33,6 +34,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
   const editor = useEditor({
     extensions: [
       StarterKit,
+      Image, // 🆕 NUEVO: Habilitar imágenes
       Placeholder.configure({ placeholder: 'Escribe el contenido de tu artículo aquí...' })
     ],
     content: content || "",
@@ -76,7 +78,16 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
     finally { setIsImporting(false); e.target.value = null; }
   };
 
-  // 🆕 FUNCIÓN PARA CARGAR LA PLANTILLA ESTRUCTURADA
+  // 🆕 FUNCIÓN PARA INSERTAR IMAGEN DESDE URL
+  const insertImage = () => {
+    if (!editor) return;
+    const url = prompt("🖼️ Introduce la URL de la imagen (Cloudinary):");
+    if (url && url.trim() !== "") {
+      editor.chain().focus().setImage({ src: url }).run();
+    }
+  };
+
+  // FUNCIÓN PARA CARGAR LA PLANTILLA ESTRUCTURADA
   const loadEditorTemplate = () => {
     if (!editor) return;
     const template = `
@@ -165,6 +176,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
             <ToolbarButton active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>• Lista</ToolbarButton>
             <ToolbarButton active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}>1. Lista</ToolbarButton>
             <ToolbarButton active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>" Cita</ToolbarButton>
+            <ToolbarButton onClick={insertImage}>🖼️ Imagen</ToolbarButton> {/* 🆕 NUEVO BOTÓN */}
             <ToolbarButton onClick={() => editor.chain().focus().clearNodes().run()}>🧹 Limpiar</ToolbarButton>
           </div>
         )}
@@ -188,7 +200,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
           <button onClick={publish} style={btnPrimary}>{editingId ? "💾 Guardar cambios" : "🚀 Publicar"}</button>
           {editingId && <button onClick={() => { setEditingId(null); setTitle(""); setContent(""); setImage(""); if(editor) editor.commands.clearContent(); }} style={{ ...btnDanger, marginLeft: 10 }}>Cancelar</button>}
           
-          {/* 🆕 BOTÓN NUEVO: CARGAR PLANTILLA */}
+          {/* BOTÓN: CARGAR PLANTILLA */}
           {!editingId && (
             <button 
               onClick={loadEditorTemplate} 
