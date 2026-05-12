@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import Image from '@tiptap/extension-image'; // 🆕 NUEVO: Extensión de imagen
+import Image from '@tiptap/extension-image';
 import mammoth from 'mammoth';
 import { btnPrimary, btnDanger } from '../App';
 
@@ -34,7 +34,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Image, // 🆕 NUEVO: Habilitar imágenes
+      Image,
       Placeholder.configure({ placeholder: 'Escribe el contenido de tu artículo aquí...' })
     ],
     content: content || "",
@@ -176,7 +176,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
             <ToolbarButton active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>• Lista</ToolbarButton>
             <ToolbarButton active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}>1. Lista</ToolbarButton>
             <ToolbarButton active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>" Cita</ToolbarButton>
-            <ToolbarButton onClick={insertImage}>🖼️ Imagen</ToolbarButton> {/* 🆕 NUEVO BOTÓN */}
+            <ToolbarButton onClick={insertImage}>🖼️ Imagen</ToolbarButton>
             <ToolbarButton onClick={() => editor.chain().focus().clearNodes().run()}>🧹 Limpiar</ToolbarButton>
           </div>
         )}
