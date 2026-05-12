@@ -154,7 +154,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // --- CARGA DE DATOS (CORREGIDO PARA ANÓNIMOS) ---
+  // --- CARGA DE DATOS ---
   useEffect(() => {
     const loadData = async () => {
       const safeLoad = async (col, setter) => { 
@@ -204,42 +204,57 @@ export default function App() {
   const deleteUserRole = async (uid) => { if (uid === ADMIN_UID) return; if (!confirm("¿Eliminar?")) return; await deleteDoc(doc(db, "roles", uid)); logActivity("usuario_eliminado", uid); };
   const toggleRole = async (uid, currentRole) => { if (uid === ADMIN_UID) return; const newRole = currentRole === "admin" ? "editor" : "admin"; await setDoc(doc(db, "roles", uid), { role: newRole }); logActivity("rol_cambiado", `${uid} -> ${newRole}`); };
 
-  // 🆕 FUNCIÓN PUBLISH MEJORADA - Recibe getContent como callback
+  // 🆕 FUNCIÓN PUBLISH BLINDADA
   const publish = useCallback(async (getContent) => {
     if (!checkAuth()) return;
-    if (!title || !content) return alert("❌ Rellena título y contenido");
-    
-    //  OBTENER CONTENIDO ACTUALIZADO DEL EDITOR
+
+    // 1️⃣ Obtener contenido FRESCO directamente del editor
     const finalContent = getContent ? getContent() : content;
-    
-    const data = { 
-      title, 
-      content: finalContent, 
-      category, 
-      image: image || "", 
-      date: new Date().toLocaleDateString(), 
-      author: user.email, 
-      authorId: user.uid, 
-      updatedAt: new Date().toISOString(), 
-      createdAt: editingId ? undefined : new Date().toISOString() 
-    };
-    
-    if (editingId) {
-      await updateDoc(doc(db, "articles", editingId), data);
-      logActivity("actualizado", `"${title}"`);
-    } else {
-      await addDoc(collection(db, "articles"), data);
-      logActivity("creado", `"${title}"`);
+    const finalTitle = title?.trim() || "";
+
+    // 2️⃣ Validar DESPUÉS de obtener el contenido real
+    if (!finalTitle || !finalContent) {
+      alert("❌ El título y el contenido no pueden estar vacíos.");
+      return;
     }
-    
-    const snap = await getDocs(collection(db, "articles"));
-    setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    setTitle(""); 
-    setContent(""); 
-    setImage(""); 
-    setEditingId(null);
-    
-    alert("✅ Artículo guardado correctamente");
+
+    try {
+      const data = {
+        title: finalTitle,
+        content: finalContent,
+        category,
+        image: image || "",
+        date: new Date().toLocaleDateString(),
+        author: user.email,
+        authorId: user.uid,
+        updatedAt: new Date().toISOString(),
+        createdAt: editingId ? undefined : new Date().toISOString()
+      };
+
+      // 3️⃣ Guardar en Firestore
+      if (editingId) {
+        await updateDoc(doc(db, "articles", editingId), data);
+        logActivity("actualizado", `"${finalTitle}"`);
+      } else {
+        await addDoc(collection(db, "articles"), data);
+        logActivity("creado", `"${finalTitle}"`);
+      }
+
+      // 4️⃣ Recargar lista de artículos
+      const snap = await getDocs(collection(db, "articles"));
+      setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      // 5️⃣ Limpiar formulario
+      setTitle("");
+      setContent("");
+      setImage("");
+      setEditingId(null);
+
+      alert("✅ Artículo guardado y publicado correctamente.");
+    } catch (err) {
+      console.error("🔥 ERROR CRÍTICO AL GUARDAR:", err);
+      alert("❌ Error al guardar: " + err.message);
+    }
   }, [content, title, category, image, editingId, user, checkAuth, logActivity]);
 
   const startEdit = (a) => { if (!checkAuth()) return; if (role === "editor" && a.authorId !== user.uid) return alert("❌ Solo tus artículos"); setTitle(a.title); setContent(a.content); setCategory(a.category); setImage(a.image || ""); setEditingId(a.id); setView("admin"); };

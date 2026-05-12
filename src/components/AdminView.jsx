@@ -51,7 +51,6 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
       attributes: {
         style: `padding: 15px; min-height: 250px; outline: none; font-family: Georgia, serif; line-height: 1.6; color: ${isDarkMode ? '#e2e8f0' : '#334155'}; background: ${isDarkMode ? '#0f172a' : '#fff'};`
       },
-      // 🆕 CSS INLINE PARA EL EDITOR
       style: `
         .ProseMirror img {
           max-width: 100% !important;
@@ -97,26 +96,15 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
     finally { setIsImporting(false); e.target.value = null; }
   };
 
-  // 🆕 FUNCIÓN PARA INSERTAR IMAGEN DESDE URL (CON TAMAÑO CONTROLADO)
+  // 🆕 FUNCIÓN PARA INSERTAR IMAGEN DESDE URL
   const insertImage = () => {
     if (!editor) return;
     const url = prompt("🖼️ Introduce la URL de la imagen (Cloudinary):");
     if (url && url.trim() !== "") {
-      // Insertar imagen con atributos de estilo inline
       editor.chain().focus().setImage({ 
         src: url,
         alt: "Imagen del artículo"
       }).run();
-      
-      // Asegurar que la imagen tenga estilo responsivo
-      setTimeout(() => {
-        const images = document.querySelectorAll('.ProseMirror img');
-        images.forEach(img => {
-          img.style.maxWidth = '100%';
-          img.style.height = 'auto';
-          img.style.display = 'block';
-        });
-      }, 100);
     }
   };
 
@@ -220,7 +208,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
           borderRadius: "0 0 8px 8px", 
           background: isDarkMode ? "#0f172a" : "#fff", 
           minHeight: "300px",
-          overflow: "hidden" // 🆕 Prevenir desbordamiento
+          overflow: "hidden"
         }}>
            <EditorContent editor={editor} />
         </div>
@@ -236,7 +224,12 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
         
         {/* BOTONES DE ACCIÓN */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 15 }}>
-          <button onClick={publish} style={btnPrimary}>{editingId ? "💾 Guardar cambios" : "🚀 Publicar"}</button>
+          <button 
+            onClick={() => publish(() => editor ? editor.getHTML() : content)} 
+            style={btnPrimary}
+          >
+            {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
+          </button>
           {editingId && <button onClick={() => { setEditingId(null); setTitle(""); setContent(""); setImage(""); if(editor) editor.commands.clearContent(); }} style={{ ...btnDanger, marginLeft: 10 }}>Cancelar</button>}
           
           {/* BOTÓN: CARGAR PLANTILLA */}
