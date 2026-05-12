@@ -9,14 +9,14 @@ import {
 import {
   signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged
 } from "firebase/auth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 // Importamos las Subcontratas (Componentes)
 import HomeView from "./components/HomeView";
 import ArticlesView from "./components/ArticlesView";
 import LinksView from "./components/LinksView";
 import AdminView from "./components/AdminView";
-import AboutView from "./components/AboutView"; // 🆕 NUEVO: Página Sobre el Proyecto
+import AboutView from "./components/AboutView";
 
 // ==============================
 // ⚙️ CONFIGURACIÓN
@@ -65,6 +65,14 @@ export const styles = `
   .search-select { padding: 10px 14px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; }
   .search-select:focus { outline: none; border-color: #1d4ed8; }
   .search-results-info { font-size: 14px; margin-top: 10px; font-style: italic; }
+  .article-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 20px 0;
+    display: block;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
   @media (max-width: 640px) { 
     .nav-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; } 
     .nav-buttons button { width: 100%; margin: 0; padding: 16px 20px; font-size: 16px; } 
@@ -149,24 +157,20 @@ export default function App() {
   // --- CARGA DE DATOS (CORREGIDO PARA ANÓNIMOS) ---
   useEffect(() => {
     const loadData = async () => {
-      // Función segura de carga con try-catch
       const safeLoad = async (col, setter) => { 
         try {
           const snap = await getDocs(collection(db, col)); 
           setter(snap.docs.map(d => ({ id: d.id, ...d.data() }))); 
         } catch (err) {
-          // Ignorar errores de permisos para usuarios anónimos
           if (err.code !== 'permission-denied') {
             console.error(`Error loading ${col}:`, err);
           }
         }
       };
       
-      // 1️⃣ Cargar primero lo PÚBLICO (funciona para todos)
       await safeLoad("articles", setArticles);
       await safeLoad("links", setLinks);
       
-      // 2️⃣ Cargar lo PRIVADO solo si hay usuario autenticado
       if (user) {
         await safeLoad("roles", setUsers);
         if (role === "owner" || role === "admin") {
@@ -200,17 +204,43 @@ export default function App() {
   const deleteUserRole = async (uid) => { if (uid === ADMIN_UID) return; if (!confirm("¿Eliminar?")) return; await deleteDoc(doc(db, "roles", uid)); logActivity("usuario_eliminado", uid); };
   const toggleRole = async (uid, currentRole) => { if (uid === ADMIN_UID) return; const newRole = currentRole === "admin" ? "editor" : "admin"; await setDoc(doc(db, "roles", uid), { role: newRole }); logActivity("rol_cambiado", `${uid} -> ${newRole}`); };
 
-  const publish = async () => {
+  // 🆕 FUNCIÓN PUBLISH MEJORADA - Recibe getContent como callback
+  const publish = useCallback(async (getContent) => {
     if (!checkAuth()) return;
     if (!title || !content) return alert("❌ Rellena título y contenido");
-    const data = { title, content, category, image: image || "", date: new Date().toLocaleDateString(), author: user.email, authorId: user.uid, updatedAt: new Date().toISOString(), createdAt: editingId ? undefined : new Date().toISOString() };
-    if (editingId) await updateDoc(doc(db, "articles", editingId), data);
-    else await addDoc(collection(db, "articles"), data);
-    logActivity(editingId ? "actualizado" : "creado", `"${title}"`);
+    
+    //  OBTENER CONTENIDO ACTUALIZADO DEL EDITOR
+    const finalContent = getContent ? getContent() : content;
+    
+    const data = { 
+      title, 
+      content: finalContent, 
+      category, 
+      image: image || "", 
+      date: new Date().toLocaleDateString(), 
+      author: user.email, 
+      authorId: user.uid, 
+      updatedAt: new Date().toISOString(), 
+      createdAt: editingId ? undefined : new Date().toISOString() 
+    };
+    
+    if (editingId) {
+      await updateDoc(doc(db, "articles", editingId), data);
+      logActivity("actualizado", `"${title}"`);
+    } else {
+      await addDoc(collection(db, "articles"), data);
+      logActivity("creado", `"${title}"`);
+    }
+    
     const snap = await getDocs(collection(db, "articles"));
     setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    setTitle(""); setContent(""); setImage(""); setEditingId(null);
-  };
+    setTitle(""); 
+    setContent(""); 
+    setImage(""); 
+    setEditingId(null);
+    
+    alert("✅ Artículo guardado correctamente");
+  }, [content, title, category, image, editingId, user, checkAuth, logActivity]);
 
   const startEdit = (a) => { if (!checkAuth()) return; if (role === "editor" && a.authorId !== user.uid) return alert("❌ Solo tus artículos"); setTitle(a.title); setContent(a.content); setCategory(a.category); setImage(a.image || ""); setEditingId(a.id); setView("admin"); };
   const removeArticle = async (id) => { if (!checkAuth()) return; if (!confirm("¿Eliminar?")) return; await deleteDoc(doc(db, "articles", id)); logActivity("articulo_eliminado", id); const snap = await getDocs(collection(db, "articles")); setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() }))); };
@@ -275,7 +305,7 @@ export default function App() {
         <button onClick={() => setView("home")} style={btnPrimary}>🏠 Inicio</button>
         <button onClick={() => setView("articles")} style={btnPrimary}>📚 Artículos</button>
         <button onClick={() => setView("links")} style={btnPrimary}>🔗 Enlaces</button>
-        <button onClick={() => setView("about")} style={btnPrimary}>📜 Sobre el Proyecto</button> {/* 🆕 NUEVO */}
+        <button onClick={() => setView("about")} style={btnPrimary}>📜 Sobre el Proyecto</button>
         {(role === "owner" || role === "admin") && <button onClick={() => setView("admin")} style={btnDanger}>⚙️ Admin</button>}
         <button onClick={toggleDarkMode} style={{...btnPrimary, background: isDarkMode ? "#fbbf24" : "#475569", color: isDarkMode ? "#0f172a" : "#fff"}}>
           {isDarkMode ? "☀️ Claro" : "🌙 Oscuro"}
@@ -285,7 +315,7 @@ export default function App() {
       {/* VISTAS */}
       {view === "home" && <HomeView login={login} setView={setView} user={user} isDarkMode={isDarkMode} />}
       
-      {view === "about" && <AboutView setView={setView} isDarkMode={isDarkMode} />} {/* 🆕 NUEVO */}
+      {view === "about" && <AboutView setView={setView} isDarkMode={isDarkMode} />}
 
       {view === "articles" && (
         <ArticlesView 
