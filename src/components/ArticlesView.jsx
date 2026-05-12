@@ -15,7 +15,54 @@ function ArticleCard({ a, user, role, startEdit, removeArticle, sendToTelegram, 
         <h3 style={{ margin: 0, fontFamily: "Georgia, serif", color: isDarkMode ? "#f1f5f9" : "#020617" }}>{a.title}</h3>
         {isNew(a) && <span className="badge-new">✨ NUEVO</span>}
       </div>
-      <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6, color: isDarkMode ? "#cbd5e1" : "#334155", marginTop: 10 }} dangerouslySetInnerHTML={{ __html: a.content }} />
+      
+      {/* CONTENIDO DEL ARTÍCULO CON ESTILOS PARA IMÁGENES */}
+      <div 
+        style={{ 
+          lineHeight: 1.6, 
+          color: isDarkMode ? "#cbd5e1" : "#334155", 
+          marginTop: 10,
+        }} 
+        dangerouslySetInnerHTML={{ __html: a.content }} 
+      />
+      
+      {/* ESTILOS CSS INYECTADOS PARA IMÁGENES DENTRO DEL ARTÍCULO */}
+      <style>{`
+        .article-content img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 8px;
+          margin: 20px 0;
+          display: block;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .article-content p {
+          margin: 10px 0;
+        }
+        .article-content h2, .article-content h3 {
+          color: ${isDarkMode ? "#fbbf24" : "#1e3a8a"};
+          margin: 25px 0 15px 0;
+          font-family: Georgia, serif;
+        }
+        .article-content ul, .article-content ol {
+          padding-left: 25px;
+          margin: 15px 0;
+        }
+        .article-content li {
+          margin: 8px 0;
+        }
+        .article-content blockquote {
+          border-left: 4px solid ${isDarkMode ? "#fbbf24" : "#1d4ed8"};
+          padding-left: 15px;
+          margin: 20px 0;
+          font-style: italic;
+          color: ${isDarkMode ? "#94a3b8" : "#64748b"};
+          background: ${isDarkMode ? "#0f172a" : "#f8fafc"};
+          padding: 15px;
+          border-radius: 0 8px 8px 0;
+        }
+      `}</style>
+      
       {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 10, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
       
       {user && ((role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid))) && (
