@@ -54,7 +54,7 @@ export const styles = `
   .accordion-header.active { border-left: 5px solid #fbbf24; }
   .accordion-icon { font-size: 20px; transition: transform 0.3s; }
   .accordion-icon.open { transform: rotate(180deg); }
-  .accordion-content { max-height: 2000px; overflow: hidden; transition: max-height 0.4s ease-out, opacity 0.4s ease-out; opacity: 1; }
+  .accordion-content { max-height: 50000px; overflow: hidden; transition: max-height 0.4s ease-out, opacity 0.4s ease-out; opacity: 1; }
   .accordion-content.closed { max-height: 0; opacity: 0; pointer-events: none; }
   .import-zone { border: 2px dashed #94a3b8; border-radius: 12px; padding: 25px; text-align: center; margin-bottom: 25px; cursor: pointer; transition: all 0.2s; }
   .import-zone:hover { border-color: #1d4ed8; }
