@@ -204,7 +204,7 @@ export default function App() {
   const deleteUserRole = async (uid) => { if (uid === ADMIN_UID) return; if (!confirm("¿Eliminar?")) return; await deleteDoc(doc(db, "roles", uid)); logActivity("usuario_eliminado", uid); };
   const toggleRole = async (uid, currentRole) => { if (uid === ADMIN_UID) return; const newRole = currentRole === "admin" ? "editor" : "admin"; await setDoc(doc(db, "roles", uid), { role: newRole }); logActivity("rol_cambiado", `${uid} -> ${newRole}`); };
 
-  // 🆕 FUNCIÓN PUBLISH BLINDADA
+  // 🆕 FUNCIÓN PUBLISH BLINDADA (CORREGIDA)
   const publish = useCallback(async (getContent) => {
     if (!checkAuth()) return;
 
@@ -219,6 +219,7 @@ export default function App() {
     }
 
     try {
+      // 3️⃣ Construir objeto de datos
       const data = {
         title: finalTitle,
         content: finalContent,
@@ -227,11 +228,15 @@ export default function App() {
         date: new Date().toLocaleDateString(),
         author: user.email,
         authorId: user.uid,
-        updatedAt: new Date().toISOString(),
-        createdAt: editingId ? undefined : new Date().toISOString()
+        updatedAt: new Date().toISOString()
       };
 
-      // 3️⃣ Guardar en Firestore
+      // 🆕 Solo añadir createdAt si es artículo NUEVO
+      if (!editingId) {
+        data.createdAt = new Date().toISOString();
+      }
+
+      // 4️⃣ Guardar en Firestore
       if (editingId) {
         await updateDoc(doc(db, "articles", editingId), data);
         logActivity("actualizado", `"${finalTitle}"`);
@@ -240,11 +245,11 @@ export default function App() {
         logActivity("creado", `"${finalTitle}"`);
       }
 
-      // 4️⃣ Recargar lista de artículos
+      // 5️⃣ Recargar lista de artículos
       const snap = await getDocs(collection(db, "articles"));
       setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      // 5️⃣ Limpiar formulario
+      // 6️⃣ Limpiar formulario
       setTitle("");
       setContent("");
       setImage("");
