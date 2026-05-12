@@ -30,11 +30,16 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
   const [isImporting, setIsImporting] = useState(false);
   const [importMessage, setImportMessage] = useState("");
 
-  // Configuración de TIPTAP
+  // Configuración de TIPTAP CON ESTILOS PARA IMÁGENES
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Image,
+      Image.configure({
+        HTMLAttributes: {
+          class: 'responsive-image',
+          style: 'max-width: 100%; height: auto; display: block; margin: 20px 0; border-radius: 8px;'
+        }
+      }),
       Placeholder.configure({ placeholder: 'Escribe el contenido de tu artículo aquí...' })
     ],
     content: content || "",
@@ -45,7 +50,21 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
     editorProps: {
       attributes: {
         style: `padding: 15px; min-height: 250px; outline: none; font-family: Georgia, serif; line-height: 1.6; color: ${isDarkMode ? '#e2e8f0' : '#334155'}; background: ${isDarkMode ? '#0f172a' : '#fff'};`
-      }
+      },
+      // 🆕 CSS INLINE PARA EL EDITOR
+      style: `
+        .ProseMirror img {
+          max-width: 100% !important;
+          height: auto !important;
+          display: block;
+          margin: 20px 0;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .ProseMirror {
+          overflow-x: hidden;
+        }
+      `
     }
   });
 
@@ -78,12 +97,26 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
     finally { setIsImporting(false); e.target.value = null; }
   };
 
-  // 🆕 FUNCIÓN PARA INSERTAR IMAGEN DESDE URL
+  // 🆕 FUNCIÓN PARA INSERTAR IMAGEN DESDE URL (CON TAMAÑO CONTROLADO)
   const insertImage = () => {
     if (!editor) return;
     const url = prompt("🖼️ Introduce la URL de la imagen (Cloudinary):");
     if (url && url.trim() !== "") {
-      editor.chain().focus().setImage({ src: url }).run();
+      // Insertar imagen con atributos de estilo inline
+      editor.chain().focus().setImage({ 
+        src: url,
+        alt: "Imagen del artículo"
+      }).run();
+      
+      // Asegurar que la imagen tenga estilo responsivo
+      setTimeout(() => {
+        const images = document.querySelectorAll('.ProseMirror img');
+        images.forEach(img => {
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+          img.style.display = 'block';
+        });
+      }, 100);
     }
   };
 
@@ -182,7 +215,13 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
         )}
         
         {/* ÁREA DE EDICIÓN */}
-        <div style={{ border: `1px solid ${isDarkMode ? "#475569" : "#cbd5e1"}`, borderRadius: "0 0 8px 8px", background: isDarkMode ? "#0f172a" : "#fff", minHeight: "300px" }}>
+        <div style={{ 
+          border: `1px solid ${isDarkMode ? "#475569" : "#cbd5e1"}`, 
+          borderRadius: "0 0 8px 8px", 
+          background: isDarkMode ? "#0f172a" : "#fff", 
+          minHeight: "300px",
+          overflow: "hidden" // 🆕 Prevenir desbordamiento
+        }}>
            <EditorContent editor={editor} />
         </div>
 
