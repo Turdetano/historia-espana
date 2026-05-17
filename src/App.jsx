@@ -160,7 +160,7 @@ export default function App() {
       const safeLoad = async (col, setter) => { 
         try {
           const snap = await getDocs(collection(db, col)); 
-          setter(snap.docs.map(d => ({ id: d.id, ...d.data() }))); 
+          setter(snap.docs.map(d => ({ uid: d.id, ...d.data() }))); 
         } catch (err) {
           if (err.code !== 'permission-denied') {
             console.error(`Error loading ${col}:`, err);
@@ -199,27 +199,111 @@ export default function App() {
     if (user?.uid) { navigator.clipboard.writeText(user.uid); setCopiedUid(true); setTimeout(() => setCopiedUid(false), 2000); }
   };
 
-  const makeAdmin = async () => { if (role !== "owner") return; const t = prompt("UID o Email:"); if (!t) return; await setDoc(doc(db, "roles", t), { role: "admin" }); logActivity("admin_asignado", t); alert("✅"); };
-  const makeEditor = async () => { if (role !== "owner" && role !== "admin") return; const t = prompt("UID o Email:"); if (!t) return; await setDoc(doc(db, "roles", t), { role: "editor" }); logActivity("editor_asignado", t); alert("✅"); };
-  const deleteUserRole = async (uid) => { if (uid === ADMIN_UID) return; if (!confirm("¿Eliminar?")) return; await deleteDoc(doc(db, "roles", uid)); logActivity("usuario_eliminado", uid); };
-  const toggleRole = async (uid, currentRole) => { if (uid === ADMIN_UID) return; const newRole = currentRole === "admin" ? "editor" : "admin"; await setDoc(doc(db, "roles", uid), { role: newRole }); logActivity("rol_cambiado", `${uid} -> ${newRole}`); };
+  // 🆕 FUNCIÓN MEJORADA: CREAR ADMIN (CON EMAIL)
+  const makeAdmin = async () => { 
+    if (role !== "owner") return; 
+    const input = prompt("Introduce el EMAIL del nuevo Admin:"); 
+    if (!input || !input.includes('@')) {
+      alert("❌ Introduce un email válido");
+      return;
+    }
+    
+    try {
+      // Buscar si el usuario existe en Auth por email (requiere Admin SDK)
+      // Por ahora, guardamos el email directamente
+      await setDoc(doc(db, "roles", input), { 
+        role: "admin",
+        email: input,
+        createdAt: new Date().toISOString(),
+        createdBy: user.email
+      }); 
+      
+      logActivity("admin_asignado", input); 
+      alert(`✅ Admin creado: ${input}`);
+      
+      // Recargar lista de usuarios
+      const snap = await getDocs(collection(db, "roles"));
+      setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
+    } catch (err) {
+      console.error(err);
+      alert("❌ Error al crear admin: " + err.message);
+    }
+  };
+
+  // 🆕 FUNCIÓN MEJORADA: CREAR EDITOR (CON EMAIL)
+  const makeEditor = async () => { 
+    if (role !== "owner" && role !== "admin") return; 
+    const input = prompt("Introduce el EMAIL del nuevo Editor:"); 
+    if (!input || !input.includes('@')) {
+      alert("❌ Introduce un email válido");
+      return;
+    }
+    
+    try {
+      await setDoc(doc(db, "roles", input), { 
+        role: "editor",
+        email: input,
+        createdAt: new Date().toISOString(),
+        createdBy: user.email
+      }); 
+      
+      logActivity("editor_asignado", input); 
+      alert(`✅ Editor creado: ${input}`);
+      
+      // Recargar lista de usuarios
+      const snap = await getDocs(collection(db, "roles"));
+      setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
+    } catch (err) {
+      console.error(err);
+      alert("❌ Error al crear editor: " + err.message);
+    }
+  };
+
+  const deleteUserRole = async (uid) => { 
+    if (uid === ADMIN_UID) return; 
+    if (!confirm("¿Eliminar este usuario?")) return; 
+    await deleteDoc(doc(db, "roles", uid)); 
+    logActivity("usuario_eliminado", uid); 
+    
+    // Recargar lista
+    const snap = await getDocs(collection(db, "roles"));
+    setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
+  };
+
+  const toggleRole = async (uid, currentRole) => { 
+    if (uid === ADMIN_UID) return; 
+    const newRole = currentRole === "admin" ? "editor" : "admin"; 
+    
+    try {
+      await updateDoc(doc(db, "roles", uid), { 
+        role: newRole,
+        updatedAt: new Date().toISOString()
+      }); 
+      
+      logActivity("rol_cambiado", `${uid} → ${newRole}`); 
+      alert(`✅ Rol cambiado a ${newRole}`);
+      
+      // Recargar lista
+      const snap = await getDocs(collection(db, "roles"));
+      setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
+    } catch (err) {
+      alert("❌ Error: " + err.message);
+    }
+  };
 
   // 🆕 FUNCIÓN PUBLISH BLINDADA (CORREGIDA)
   const publish = useCallback(async (getContent) => {
     if (!checkAuth()) return;
 
-    // 1️⃣ Obtener contenido FRESCO directamente del editor
     const finalContent = getContent ? getContent() : content;
     const finalTitle = title?.trim() || "";
 
-    // 2️⃣ Validar DESPUÉS de obtener el contenido real
     if (!finalTitle || !finalContent) {
       alert("❌ El título y el contenido no pueden estar vacíos.");
       return;
     }
 
     try {
-      // 3️⃣ Construir objeto de datos
       const data = {
         title: finalTitle,
         content: finalContent,
@@ -231,12 +315,10 @@ export default function App() {
         updatedAt: new Date().toISOString()
       };
 
-      // 🆕 Solo añadir createdAt si es artículo NUEVO
       if (!editingId) {
         data.createdAt = new Date().toISOString();
       }
 
-      // 4️⃣ Guardar en Firestore
       if (editingId) {
         await updateDoc(doc(db, "articles", editingId), data);
         logActivity("actualizado", `"${finalTitle}"`);
@@ -245,11 +327,9 @@ export default function App() {
         logActivity("creado", `"${finalTitle}"`);
       }
 
-      // 5️⃣ Recargar lista de artículos
       const snap = await getDocs(collection(db, "articles"));
       setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      // 6️⃣ Limpiar formulario
       setTitle("");
       setContent("");
       setImage("");
