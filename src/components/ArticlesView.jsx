@@ -1,8 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { btnPrimary, btnDanger, btnPDF } from '../App'; 
 
-// Componente interno para la tarjeta de artículo
+// Componente interno para la tarjeta de artículo en la lista
 function ArticleCard({ a, user, role, startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  console.log('🔍 ArticleCard renderizado:', a.title, 'isExpanded:', isExpanded); // DEBUG
+  
   return (
     <div style={{ 
       background: isDarkMode ? "#1e293b" : "#fff", 
@@ -16,54 +20,57 @@ function ArticleCard({ a, user, role, startEdit, removeArticle, sendToTelegram, 
         {isNew(a) && <span className="badge-new">✨ NUEVO</span>}
       </div>
       
-      {/* CONTENIDO DEL ARTÍCULO CON ESTILOS PARA IMÁGENES */}
-      <div 
-        style={{ 
-          lineHeight: 1.6, 
-          color: isDarkMode ? "#cbd5e1" : "#334155", 
-          marginTop: 10,
-        }} 
-        dangerouslySetInnerHTML={{ __html: a.content }} 
-      />
+      {/* BOTÓN PARA EXPANDIR/CONTRAER - SIEMPRE VISIBLE */}
+      <button 
+        onClick={() => {
+          console.log('🔘 Click en botón, nuevo estado:', !isExpanded);
+          setIsExpanded(!isExpanded);
+        }}
+        style={{...btnPrimary, width: "100%", marginTop: 10, background: isExpanded ? "#64748b" : "#1d4ed8"}}
+      >
+        {isExpanded ? '▲ Contraer' : '📖 Leer artículo completo'}
+      </button>
       
-      {/* ESTILOS CSS INYECTADOS PARA IMÁGENES DENTRO DEL ARTÍCULO */}
-      <style>{`
-        .article-content img {
-          max-width: 100%;
-          height: auto;
-          border-radius: 8px;
-          margin: 20px 0;
-          display: block;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .article-content p {
-          margin: 10px 0;
-        }
-        .article-content h2, .article-content h3 {
-          color: ${isDarkMode ? "#fbbf24" : "#1e3a8a"};
-          margin: 25px 0 15px 0;
-          font-family: Georgia, serif;
-        }
-        .article-content ul, .article-content ol {
-          padding-left: 25px;
-          margin: 15px 0;
-        }
-        .article-content li {
-          margin: 8px 0;
-        }
-        .article-content blockquote {
-          border-left: 4px solid ${isDarkMode ? "#fbbf24" : "#1d4ed8"};
-          padding-left: 15px;
-          margin: 20px 0;
-          font-style: italic;
-          color: ${isDarkMode ? "#94a3b8" : "#64748b"};
-          background: ${isDarkMode ? "#0f172a" : "#f8fafc"};
-          padding: 15px;
-          border-radius: 0 8px 8px 0;
-        }
-      `}</style>
-      
-      {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 10, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
+      {/* CONTENIDO EXPANDIDO CON SCROLL - SOLO SE MUESTRA SI isExpanded = true */}
+      {isExpanded && (
+        <div 
+          id={`articulo-${a.id}`}
+          style={{ 
+            lineHeight: 1.6, 
+            color: isDarkMode ? "#cbd5e1" : "#334155", 
+            marginTop: 15,
+            maxHeight: '60vh',
+            overflowY: 'auto',
+            padding: '15px',
+            background: isDarkMode ? '#0f172a' : '#f8fafc',
+            borderRadius: 8,
+            border: '2px solid #fbbf24',
+            boxShadow: '0 0 20px rgba(251, 191, 36, 0.3)',  // ← Resplandor dorado                         
+          }}
+        >
+          <div dangerouslySetInnerHTML={{ __html: a.content }} />
+          
+          {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 15, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
+          
+          {/* ESTILOS CSS PARA EL CONTENIDO */}
+          <style>{`
+            #articulo-${a.id} img {
+              max-width: 100%;
+              height: auto;
+              border-radius: 8px;
+              margin: 15px 0;
+              display: block;
+            }
+            #articulo-${a.id} p {
+              margin: 10px 0;
+            }
+            #articulo-${a.id} h2, #articulo-${a.id} h3 {
+              color: ${isDarkMode ? "#fbbf24" : "#1e3a8a"};
+              margin: 20px 0 10px 0;
+            }
+          `}</style>
+        </div>
+      )}
       
       {user && ((role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid))) && (
         <div className="article-actions" style={{ marginTop: 10 }}>
@@ -78,8 +85,31 @@ function ArticleCard({ a, user, role, startEdit, removeArticle, sendToTelegram, 
     </div>
   );
 }
+export default function ArticlesView({ 
+  articles, user, role, selectedArticle, setSelectedArticle, navigate,
+  startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode 
+}) {
+  // 🆕 Escuchar hash al cargar y expandir artículo si corresponde
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash.startsWith('articulo/')) {
+      const slug = hash.replace('articulo/', '');
+      const article = articles.find(a => {
+        const articleSlug = a.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        return articleSlug === slug || a.id === slug;
+      });
+      if (article) {
+        // Aquí podrías auto-expandir el artículo, pero por ahora solo hacemos scroll
+        setTimeout(() => {
+          const element = document.getElementById(`articulo-${article.id}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 500);
+      }
+    }
+  }, [articles]);
 
-export default function ArticlesView({ articles, user, role, startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchCategory, setSearchCategory] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
@@ -172,7 +202,7 @@ export default function ArticlesView({ articles, user, role, startEdit, removeAr
         </div>
       </div>
 
-      {/* LISTA DE ARTÍCULOS */}
+      {/* LISTA DE ARTÍCULOS POR CATEGORÍA */}
       {CATEGORIES.map(cat => {
         const catArticles = articlesByCategory[cat];
         if (catArticles.length === 0) return null;
@@ -208,7 +238,7 @@ export default function ArticlesView({ articles, user, role, startEdit, removeAr
                   sendToTelegram={sendToTelegram} 
                   exportToPDF={exportToPDF} 
                   isNew={isNew}
-                  isDarkMode={isDarkMode} 
+                  isDarkMode={isDarkMode}
                 />
               ))}
             </div>

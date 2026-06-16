@@ -54,7 +54,7 @@ export const styles = `
   .accordion-header.active { border-left: 5px solid #fbbf24; }
   .accordion-icon { font-size: 20px; transition: transform 0.3s; }
   .accordion-icon.open { transform: rotate(180deg); }
-  .accordion-content { max-height: 50000px; overflow: hidden; transition: max-height 0.4s ease-out, opacity 0.4s ease-out; opacity: 1; }
+  .accordion-content { max-height: 50000px; overflow: visible; transition: max-height 0.4s ease-out, opacity 0.4s ease-out; opacity: 1; }
   .accordion-content.closed { max-height: 0; opacity: 0; pointer-events: none; }
   .import-zone { border: 2px dashed #94a3b8; border-radius: 12px; padding: 25px; text-align: center; margin-bottom: 25px; cursor: pointer; transition: all 0.2s; }
   .import-zone:hover { border-color: #1d4ed8; }
@@ -107,6 +107,7 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   
   const [view, setView] = useState("home");
+  const [selectedArticle, setSelectedArticle] = useState(null);
   const [links, setLinks] = useState([]);
   const [newLinkName, setNewLinkName] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
@@ -123,6 +124,42 @@ export default function App() {
   }, [isDarkMode]);
 
   const toggleDarkMode = () => setIsDarkMode(prev => !prev);
+
+  // 🧭 NAVEGACIÓN POR HASH (DENTRO DEL COMPONENTE)
+  const navigate = useCallback((viewName, article = null) => {
+    if (article) {
+      const slug = article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      window.location.hash = `articulo/${slug}`;
+    } else {
+      window.location.hash = viewName;
+    }
+  }, []);
+
+  // 🧭 ESCUCHAR CAMBIOS DE HASH
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      
+      if (hash.startsWith('articulo/')) {
+        const slug = hash.replace('articulo/', '');
+        const article = articles.find(a => {
+          const articleSlug = a.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          return articleSlug === slug || a.id === slug;
+        });
+        if (article) {
+          setView('articles');
+          setSelectedArticle(article);
+        }
+      } else if (['home', 'articles', 'links', 'admin', 'about'].includes(hash)) {
+        setView(hash);
+        setSelectedArticle(null);
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [articles, setView, setSelectedArticle]);
 
   // --- AUTH & ROLES ---
   useEffect(() => {
@@ -199,7 +236,6 @@ export default function App() {
     if (user?.uid) { navigator.clipboard.writeText(user.uid); setCopiedUid(true); setTimeout(() => setCopiedUid(false), 2000); }
   };
 
-  // 🆕 FUNCIÓN MEJORADA: CREAR ADMIN (CON EMAIL)
   const makeAdmin = async () => { 
     if (role !== "owner") return; 
     const input = prompt("Introduce el EMAIL del nuevo Admin:"); 
@@ -209,8 +245,6 @@ export default function App() {
     }
     
     try {
-      // Buscar si el usuario existe en Auth por email (requiere Admin SDK)
-      // Por ahora, guardamos el email directamente
       await setDoc(doc(db, "roles", input), { 
         role: "admin",
         email: input,
@@ -221,7 +255,6 @@ export default function App() {
       logActivity("admin_asignado", input); 
       alert(`✅ Admin creado: ${input}`);
       
-      // Recargar lista de usuarios
       const snap = await getDocs(collection(db, "roles"));
       setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
     } catch (err) {
@@ -230,7 +263,6 @@ export default function App() {
     }
   };
 
-  // 🆕 FUNCIÓN MEJORADA: CREAR EDITOR (CON EMAIL)
   const makeEditor = async () => { 
     if (role !== "owner" && role !== "admin") return; 
     const input = prompt("Introduce el EMAIL del nuevo Editor:"); 
@@ -250,7 +282,6 @@ export default function App() {
       logActivity("editor_asignado", input); 
       alert(`✅ Editor creado: ${input}`);
       
-      // Recargar lista de usuarios
       const snap = await getDocs(collection(db, "roles"));
       setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
     } catch (err) {
@@ -265,7 +296,6 @@ export default function App() {
     await deleteDoc(doc(db, "roles", uid)); 
     logActivity("usuario_eliminado", uid); 
     
-    // Recargar lista
     const snap = await getDocs(collection(db, "roles"));
     setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
   };
@@ -283,7 +313,6 @@ export default function App() {
       logActivity("rol_cambiado", `${uid} → ${newRole}`); 
       alert(`✅ Rol cambiado a ${newRole}`);
       
-      // Recargar lista
       const snap = await getDocs(collection(db, "roles"));
       setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
     } catch (err) {
@@ -291,7 +320,6 @@ export default function App() {
     }
   };
 
-  // 🆕 FUNCIÓN PUBLISH BLINDADA (CORREGIDA)
   const publish = useCallback(async (getContent) => {
     if (!checkAuth()) return;
 
@@ -419,9 +447,17 @@ export default function App() {
 
       {view === "articles" && (
         <ArticlesView 
-          articles={articles} user={user} role={role} 
-          startEdit={startEdit} removeArticle={removeArticle} 
-          sendToTelegram={sendToTelegram} exportToPDF={exportToPDF} isNew={isNew}
+          articles={articles} 
+          user={user} 
+          role={role} 
+          selectedArticle={selectedArticle}
+          setSelectedArticle={setSelectedArticle}
+          navigate={navigate}
+          startEdit={startEdit} 
+          removeArticle={removeArticle} 
+          sendToTelegram={sendToTelegram} 
+          exportToPDF={exportToPDF} 
+          isNew={isNew}
           isDarkMode={isDarkMode}
         />
       )}
