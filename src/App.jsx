@@ -125,41 +125,39 @@ export default function App() {
 
   const toggleDarkMode = () => setIsDarkMode(prev => !prev);
 
-  // 🧭 NAVEGACIÓN POR HASH (DENTRO DEL COMPONENTE)
-  const navigate = useCallback((viewName, article = null) => {
-    if (article) {
-      const slug = article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      window.location.hash = `articulo/${slug}`;
-    } else {
-      window.location.hash = viewName;
-    }
-  }, []);
+  // 🧭 FUNCIÓN DE NAVEGACIÓN SIMPLIFICADA
+const navigate = (viewName, article = null) => {
+  if (article) {
+    const slug = article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    window.location.hash = `articulo/${slug}`;
+    setSelectedArticle(article);
+    setView('articles');
+  } else {
+    window.location.hash = viewName;
+    setView(viewName);
+    setSelectedArticle(null);
+  }
+};
 
-  // 🧭 ESCUCHAR CAMBIOS DE HASH
+  // 🧭 ESCUCHAR CAMBIOS DE HASH AL CARGAR
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.slice(1);
-      
-      if (hash.startsWith('articulo/')) {
-        const slug = hash.replace('articulo/', '');
-        const article = articles.find(a => {
-          const articleSlug = a.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-          return articleSlug === slug || a.id === slug;
-        });
-        if (article) {
-          setView('articles');
-          setSelectedArticle(article);
-        }
-      } else if (['home', 'articles', 'links', 'admin', 'about'].includes(hash)) {
-        setView(hash);
-        setSelectedArticle(null);
+    const hash = window.location.hash.slice(1);
+    
+    if (hash.startsWith('articulo/')) {
+      const slug = hash.replace('articulo/', '');
+      const article = articles.find(a => {
+        const articleSlug = a.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        return articleSlug === slug || a.id === slug;
+      });
+      if (article) {
+        setView('articles');
+        setSelectedArticle(article);
       }
-    };
-
-    handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [articles, setView, setSelectedArticle]);
+    } else if (['home', 'articles', 'links', 'admin', 'about'].includes(hash)) {
+      setView(hash);
+      setSelectedArticle(null);
+    }
+  }, [articles]);
 
   // --- AUTH & ROLES ---
   useEffect(() => {
@@ -430,11 +428,11 @@ export default function App() {
 
       {/* NAV */}
       <div className="nav-buttons" style={{ textAlign: "center", marginBottom: 20 }}>
-        <button onClick={() => setView("home")} style={btnPrimary}>🏠 Inicio</button>
-        <button onClick={() => setView("articles")} style={btnPrimary}>📚 Artículos</button>
-        <button onClick={() => setView("links")} style={btnPrimary}>🔗 Enlaces</button>
-        <button onClick={() => setView("about")} style={btnPrimary}>📜 Sobre el Proyecto</button>
-        {(role === "owner" || role === "admin") && <button onClick={() => setView("admin")} style={btnDanger}>⚙️ Admin</button>}
+        <button onClick={() => navigate("home")} style={btnPrimary}>🏠 Inicio</button>
+        <button onClick={() => navigate("articles")} style={btnPrimary}>📚 Artículos</button>
+        <button onClick={() => navigate("links")} style={btnPrimary}>🔗 Enlaces</button>
+        <button onClick={() => navigate("about")} style={btnPrimary}>📜 Sobre el Proyecto</button>
+        {(role === "owner" || role === "admin") && <button onClick={() => navigate("admin")} style={btnDanger}>⚙️ Admin</button>}
         <button onClick={toggleDarkMode} style={{...btnPrimary, background: isDarkMode ? "#fbbf24" : "#475569", color: isDarkMode ? "#0f172a" : "#fff"}}>
           {isDarkMode ? "☀️ Claro" : "🌙 Oscuro"}
         </button>

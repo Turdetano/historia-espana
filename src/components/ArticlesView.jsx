@@ -1,12 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { btnPrimary, btnDanger, btnPDF } from '../App'; 
 
-// Componente interno para la tarjeta de artículo en la lista
-function ArticleCard({ a, user, role, startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  
-  console.log('🔍 ArticleCard renderizado:', a.title, 'isExpanded:', isExpanded); // DEBUG
-  
+// Componente para la tarjeta de artículo en la lista
+function ArticleCard({ a, isNew, isDarkMode, onOpen }) {
   return (
     <div style={{ 
       background: isDarkMode ? "#1e293b" : "#fff", 
@@ -20,96 +16,124 @@ function ArticleCard({ a, user, role, startEdit, removeArticle, sendToTelegram, 
         {isNew(a) && <span className="badge-new">✨ NUEVO</span>}
       </div>
       
-      {/* BOTÓN PARA EXPANDIR/CONTRAER - SIEMPRE VISIBLE */}
       <button 
-        onClick={() => {
-          console.log('🔘 Click en botón, nuevo estado:', !isExpanded);
-          setIsExpanded(!isExpanded);
-        }}
-        style={{...btnPrimary, width: "100%", marginTop: 10, background: isExpanded ? "#64748b" : "#1d4ed8"}}
+        onClick={() => onOpen(a)}
+        style={{...btnPrimary, width: "100%", marginTop: 10}}
       >
-        {isExpanded ? '▲ Contraer' : '📖 Leer artículo completo'}
+        📖 Leer artículo completo
+      </button>
+    </div>
+  );
+}
+
+// Componente para vista individual del artículo
+function ArticleFullView({ article, user, role, startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode, onBack }) {
+  return (
+    <div style={{ maxWidth: 800, margin: "0 auto" }}>
+      <button 
+        onClick={onBack}
+        style={{...btnPrimary, marginBottom: 20, background: "#64748b"}}
+      >
+        ← Volver a la lista
       </button>
       
-      {/* CONTENIDO EXPANDIDO CON SCROLL - SOLO SE MUESTRA SI isExpanded = true */}
-      {isExpanded && (
+      <div 
+        style={{
+          maxHeight: '75vh',
+          overflowY: 'auto',
+          padding: '25px',
+          borderRadius: '12px',
+          background: isDarkMode ? '#1e293b' : '#fff',
+          border: '2px solid #fbbf24',
+          boxShadow: '0 0 20px rgba(251, 191, 36, 0.3)',
+          lineHeight: '1.7'
+        }}
+      >
+        <h1 style={{color: isDarkMode ? "#fbbf24" : "#1e3a8a", marginBottom: 10, fontFamily: "Georgia, serif"}}>
+          {article.title}
+          {isNew(article) && <span className="badge-new">✨ Nuevo</span>}
+        </h1>
+        <p style={{fontSize: 14, color: isDarkMode ? "#94a3b8" : "#64748b", marginBottom: 20}}>
+          📚 {article.category} | 📅 {article.date}
+        </p>
+        
+        {article.image && (
+          <img 
+            src={article.image} 
+            alt={article.title}
+            style={{width: "100%", borderRadius: 8, marginBottom: 20}}
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        )}
+        
         <div 
-          id={`articulo-${a.id}`}
-          style={{ 
-            lineHeight: 1.6, 
-            color: isDarkMode ? "#cbd5e1" : "#334155", 
-            marginTop: 15,
-            maxHeight: '60vh',
-            overflowY: 'auto',
-            padding: '15px',
-            background: isDarkMode ? '#0f172a' : '#f8fafc',
-            borderRadius: 8,
-            border: '2px solid #fbbf24',
-            boxShadow: '0 0 20px rgba(251, 191, 36, 0.3)',  // ← Resplandor dorado                         
-          }}
-        >
-          <div dangerouslySetInnerHTML={{ __html: a.content }} />
-          
-          {a.image && <img src={a.image} style={{ maxWidth: "100%", marginTop: 15, borderRadius: 8 }} alt={a.title} onError={(e) => { e.target.style.display = 'none'; }} />}
-          
-          {/* ESTILOS CSS PARA EL CONTENIDO */}
-          <style>{`
-            #articulo-${a.id} img {
-              max-width: 100%;
-              height: auto;
-              border-radius: 8px;
-              margin: 15px 0;
-              display: block;
-            }
-            #articulo-${a.id} p {
-              margin: 10px 0;
-            }
-            #articulo-${a.id} h2, #articulo-${a.id} h3 {
-              color: ${isDarkMode ? "#fbbf24" : "#1e3a8a"};
-              margin: 20px 0 10px 0;
-            }
-          `}</style>
+          style={{color: isDarkMode ? "#e2e8f0" : "#111", fontSize: 16, lineHeight: 1.7}}
+          dangerouslySetInnerHTML={{ __html: article.content }}
+        />
+        
+        <style>{`
+          .article-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: block;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
+          .article-content p {
+            margin: 10px 0;
+          }
+          .article-content h2, .article-content h3 {
+            color: ${isDarkMode ? "#fbbf24" : "#1e3a8a"};
+            margin: 25px 0 15px 0;
+            font-family: Georgia, serif;
+          }
+          .article-content ul, .article-content ol {
+            padding-left: 25px;
+            margin: 15px 0;
+          }
+          .article-content li {
+            margin: 8px 0;
+          }
+          .article-content blockquote {
+            border-left: 4px solid ${isDarkMode ? "#fbbf24" : "#1d4ed8"};
+            padding-left: 15px;
+            margin: 20px 0;
+            font-style: italic;
+            color: ${isDarkMode ? "#94a3b8" : "#64748b"};
+            background: ${isDarkMode ? "#0f172a" : "#f8fafc"};
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+          }
+        `}</style>
+        
+        <div style={{marginTop: 30, paddingTop: 20, borderTop: `1px solid ${isDarkMode ? "#334155" : "#e2e8f0"}`}}>
+          <button onClick={() => exportToPDF(article)} style={btnPDF}>
+            📄 Descargar PDF
+          </button>
+          {(role === "owner" || role === "admin" || (role === "editor" && article.authorId === user?.uid)) && (
+            <>
+              <button onClick={() => sendToTelegram(article)} style={{...btnPrimary, width: "100%", marginTop: 10}}>
+                📤 Enviar a Telegram
+              </button>
+              <button onClick={() => startEdit(article)} style={{...btnPrimary, background: "#059669", width: "100%", marginTop: 10}}>
+                ✏️ Editar
+              </button>
+              <button onClick={() => removeArticle(article.id)} style={{...btnDanger, width: "100%", marginTop: 10}}>
+                🗑️ Eliminar
+              </button>
+            </>
+          )}
         </div>
-      )}
-      
-      {user && ((role === "owner" || role === "admin" || (role === "editor" && a.authorId === user.uid))) && (
-        <div className="article-actions" style={{ marginTop: 10 }}>
-          <button onClick={() => startEdit(a)} style={btnPrimary}>✏️ Editar</button>
-          <button onClick={() => removeArticle(a.id)} style={btnDanger}>🗑️ Eliminar</button>
-          <button onClick={() => sendToTelegram(a)} style={{ ...btnPrimary, background: "#22c55e" }}>📤 Telegram</button>
-        </div>
-      )}
-      <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${isDarkMode ? "#475569" : "#e2e8f0"}` }}>
-        <button onClick={() => exportToPDF(a)} style={btnPDF}>📥 Descargar como PDF</button>
       </div>
     </div>
   );
 }
+
 export default function ArticlesView({ 
   articles, user, role, selectedArticle, setSelectedArticle, navigate,
   startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode 
 }) {
-  // 🆕 Escuchar hash al cargar y expandir artículo si corresponde
-  useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (hash.startsWith('articulo/')) {
-      const slug = hash.replace('articulo/', '');
-      const article = articles.find(a => {
-        const articleSlug = a.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        return articleSlug === slug || a.id === slug;
-      });
-      if (article) {
-        // Aquí podrías auto-expandir el artículo, pero por ahora solo hacemos scroll
-        setTimeout(() => {
-          const element = document.getElementById(`articulo-${article.id}`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        }, 500);
-      }
-    }
-  }, [articles]);
-
   const [searchTerm, setSearchTerm] = useState("");
   const [searchCategory, setSearchCategory] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
@@ -146,9 +170,39 @@ export default function ArticlesView({
 
   const clearFilters = () => { setSearchTerm(""); setSearchCategory("all"); setSortBy("newest"); };
 
+  const openArticle = (article) => {
+    console.log('🔗 Abriendo artículo:', article.title);
+    console.log('🔗 ID:', article.id);
+    setSelectedArticle(article);
+    navigate('articles', article);
+  };
+
+  const closeArticle = () => {
+    setSelectedArticle(null);
+    navigate('articles');
+  };
+
+  // SI HAY UN ARTÍCULO SELECCIONADO, MOSTRAR VISTA COMPLETA
+  if (selectedArticle) {
+    return (
+      <ArticleFullView 
+        article={selectedArticle}
+        user={user}
+        role={role}
+        startEdit={startEdit}
+        removeArticle={removeArticle}
+        sendToTelegram={sendToTelegram}
+        exportToPDF={exportToPDF}
+        isNew={isNew}
+        isDarkMode={isDarkMode}
+        onBack={closeArticle}
+      />
+    );
+  }
+
+  // SI NO HAY ARTÍCULO SELECCIONADO, MOSTRAR LISTA
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
-      {/* 🔍 BARRA DE BÚSQUEDA */}
       <div className="search-bar" style={{ 
         background: isDarkMode ? "#1e293b" : "#fff",
         border: `1px solid ${isDarkMode ? "#334155" : "#e2e8f0"}`
@@ -202,7 +256,6 @@ export default function ArticlesView({
         </div>
       </div>
 
-      {/* LISTA DE ARTÍCULOS POR CATEGORÍA */}
       {CATEGORIES.map(cat => {
         const catArticles = articlesByCategory[cat];
         if (catArticles.length === 0) return null;
@@ -222,7 +275,7 @@ export default function ArticlesView({
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span className={`accordion-icon ${isOpen ? 'open' : ''}`}>▶</span>
                 <h2 style={{ margin: 0, fontSize: "18px", color: isDarkMode ? "#60a5fa" : "#1d4ed8" }}>📚 {cat}</h2>
-                <span style={{ background: isDarkMode ? "#475569" : "#cbd5e1", borderRadius: 50, padding: "2px 8px", fontSize: 12, fontWeight: "bold", color: isDarkMode ? "#e2e8f0" : "#1e293b" }}>{catArticles.length}</span>
+                <span style={{ background: isDarkMode ? "#475569" : "#cbd5e1", borderRadius: 50, padding: "2px 8px", fontSize: 12, fontWeight: "bold", color: isDarkMode ? "#e2e8f0" : "#1e3a8a" }}>{catArticles.length}</span>
               </div>
               {hasNew && <span className="badge-new">🆕 NUEVO</span>}
             </div>
@@ -231,14 +284,9 @@ export default function ArticlesView({
                 <ArticleCard 
                   key={a.id} 
                   a={a} 
-                  user={user} 
-                  role={role} 
-                  startEdit={startEdit} 
-                  removeArticle={removeArticle} 
-                  sendToTelegram={sendToTelegram} 
-                  exportToPDF={exportToPDF} 
                   isNew={isNew}
                   isDarkMode={isDarkMode}
+                  onOpen={openArticle}
                 />
               ))}
             </div>
