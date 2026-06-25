@@ -96,7 +96,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
     finally { setIsImporting(false); e.target.value = null; }
   };
 
-  // 🆕 FUNCIÓN PARA INSERTAR IMAGEN DESDE URL
+  // FUNCIÓN PARA INSERTAR IMAGEN DESDE URL
   const insertImage = () => {
     if (!editor) return;
     const url = prompt("🖼️ Introduce la URL de la imagen (Cloudinary):");
@@ -213,8 +213,18 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
            <EditorContent editor={editor} />
         </div>
 
-        <select value={category} onChange={e => setCategory(e.target.value)} style={inputStyle}>
-          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+        {/* 🆕 SELECT DE CATEGORÍAS CORREGIDO (con value) */}
+        <select 
+          value={category || CATEGORIES[0]} 
+          onChange={e => {
+            console.log('🔄 Cambiando categoría a:', e.target.value);
+            setCategory(e.target.value);
+          }}
+          style={inputStyle}
+        >
+          {CATEGORIES.map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
         </select>
         
         <input value={image || ""} onChange={e => setImage(e.target.value)} placeholder="URL de Imagen (Cloudinary)" style={inputStyle} />
@@ -230,7 +240,21 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
           >
             {editingId ? "💾 Guardar cambios" : "🚀 Publicar"}
           </button>
-          {editingId && <button onClick={() => { setEditingId(null); setTitle(""); setContent(""); setImage(""); if(editor) editor.commands.clearContent(); }} style={{ ...btnDanger, marginLeft: 10 }}>Cancelar</button>}
+          {editingId && (
+            <button 
+              onClick={() => { 
+                setEditingId(null); 
+                setTitle(""); 
+                setContent(""); 
+                setImage(""); 
+                setCategory(CATEGORIES[0]); // 🆕 Resetear categoría
+                if(editor) editor.commands.clearContent(); 
+              }} 
+              style={{ ...btnDanger, marginLeft: 10 }}
+            >
+              Cancelar
+            </button>
+          )}
           
           {/* BOTÓN: CARGAR PLANTILLA */}
           {!editingId && (
