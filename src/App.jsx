@@ -128,31 +128,31 @@ export default function App() {
   // 🧭 FUNCIÓN DE NAVEGACIÓN SIMPLIFICADA
 
   // Función para generar slugs limpios (sin acentos ni caracteres especiales)
-const generateSlug = (text) => {
-  return text
-    .toString()
-    .toLowerCase()
-    // Convertir caracteres acentuados a su versión sin acento
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Elimina diacríticos (tildes)
-    .replace(/ñ/g, 'n') // ñ → n
-    .replace(/[^a-z0-9]+/g, '-') // Solo letras y números
-    .replace(/^-+|-+$/g, '') // Elimina guiones al inicio y final
-    .replace(/--+/g, '-'); // Reemplaza múltiples guiones por uno solo
-};
+  const generateSlug = (text) => {
+    return text
+      .toString()
+      .toLowerCase()
+      // Convertir caracteres acentuados a su versión sin acento
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Elimina diacríticos (tildes)
+      .replace(/ñ/g, 'n') // ñ → n
+      .replace(/[^a-z0-9]+/g, '-') // Solo letras y números
+      .replace(/^-+|-+$/g, '') // Elimina guiones al inicio y final
+      .replace(/--+/g, '-'); // Reemplaza múltiples guiones por uno solo
+  };
 
-const navigate = (viewName, article = null) => {
-  if (article) {
-    const slug = generateSlug(article.title);
-    window.location.hash = `articulo/${slug}`;
-    setSelectedArticle(article);
-    setView('articles');
-  } else {
-    window.location.hash = viewName;
-    setView(viewName);
-    setSelectedArticle(null);
-  }
-};
+  const navigate = (viewName, article = null) => {
+    if (article) {
+      const slug = generateSlug(article.title);
+      window.location.hash = `articulo/${slug}`;
+      setSelectedArticle(article);
+      setView('articles');
+    } else {
+      window.location.hash = viewName;
+      setView(viewName);
+      setSelectedArticle(null);
+    }
+  };
 
   // 🧭 ESCUCHAR CAMBIOS DE HASH AL CARGAR
   useEffect(() => {
@@ -161,7 +161,7 @@ const navigate = (viewName, article = null) => {
     if (hash.startsWith('articulo/')) {
       const slug = hash.replace('articulo/', '');
       const article = articles.find(a => {
-      const articleSlug = generateSlug(a.title);
+        const articleSlug = generateSlug(a.title);
         return articleSlug === slug || a.id === slug;
       });
       if (article) {
@@ -344,6 +344,30 @@ const navigate = (viewName, article = null) => {
       return;
     }
 
+    // 🆕 VALIDACIÓN DE DUPLICADOS
+    if (!editingId) {
+      const existingArticle = articles.find(a => 
+        a.title.toLowerCase() === finalTitle.toLowerCase()
+      );
+      
+      if (existingArticle) {
+        const opcion = confirm(
+          `⚠️ Ya existe un artículo con el título:\n\n"${existingArticle.title}"\n\nPulsa ACEPTAR para editarlo en lugar de crear un duplicado.\nPulsa CANCELAR para crear un artículo nuevo de todos modos.`
+        );
+        
+        if (opcion) {
+          // Abrir el artículo existente para editar
+          setTitle(existingArticle.title);
+          setContent(existingArticle.content);
+          setCategory(existingArticle.category);
+          setImage(existingArticle.image || "");
+          setEditingId(existingArticle.id);
+          setView("admin");
+          return;
+        }
+      }
+    }
+
     try {
       const data = {
         title: finalTitle,
@@ -364,10 +388,10 @@ const navigate = (viewName, article = null) => {
         await updateDoc(doc(db, "articles", editingId), data);
         logActivity("actualizado", `"${finalTitle}"`);
       } else {
-  const newId = crypto.randomUUID();
-  await setDoc(doc(db, "articles", newId), { ...data, id: newId });
-  logActivity("creado", `"${finalTitle}"`);
-}
+        const newId = crypto.randomUUID();
+        await setDoc(doc(db, "articles", newId), { ...data, id: newId });
+        logActivity("creado", `"${finalTitle}"`);
+      }
 
       const snap = await getDocs(collection(db, "articles"));
       setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -382,10 +406,52 @@ const navigate = (viewName, article = null) => {
       console.error("🔥 ERROR CRÍTICO AL GUARDAR:", err);
       alert("❌ Error al guardar: " + err.message);
     }
-  }, [content, title, category, image, editingId, user, checkAuth, logActivity]);
+  }, [content, title, category, image, editingId, user, checkAuth, logActivity, articles]);
 
-  const startEdit = (a) => { if (!checkAuth()) return; if (role === "editor" && a.authorId !== user.uid) return alert("❌ Solo tus artículos"); setTitle(a.title); setContent(a.content); setCategory(a.category); setImage(a.image || ""); setEditingId(a.id); setView("admin"); };
-  const removeArticle = async (id) => { if (!checkAuth()) return; if (!confirm("¿Eliminar?")) return; await deleteDoc(doc(db, "articles", id)); logActivity("articulo_eliminado", id); const snap = await getDocs(collection(db, "articles")); setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() }))); };
+  const startEdit = (a) => { 
+    if (!checkAuth()) return; 
+    if (role === "editor" && a.authorId !== user.uid) return alert("❌ Solo tus artículos"); 
+    setTitle(a.title); 
+    setContent(a.content); 
+    setCategory(a.category); 
+    setImage(a.image || ""); 
+    setEditingId(a.id); 
+    setView("admin"); 
+  };
+
+  // 🆕 MEJORA: removeArticle mejorada para owners/admins
+  const removeArticle = async (id) => { 
+    if (!checkAuth()) return; 
+    
+    // Owners y admins pueden borrar cualquier artículo
+    if (role !== "owner" && role !== "admin") {
+      const article = articles.find(a => a.id === id);
+      if (article?.authorId !== user?.uid) {
+        return alert("❌ Solo puedes borrar tus artículos");
+      }
+    }
+    
+    if (!confirm("⚠️ ¿Eliminar este artículo?\n\nEsta acción NO se puede deshacer.")) return; 
+    
+    try {
+      console.log("🗑️ Eliminando artículo:", id);
+      await deleteDoc(doc(db, "articles", id)); 
+      logActivity("articulo_eliminado", id); 
+      const snap = await getDocs(collection(db, "articles")); 
+      setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      
+      // Si el artículo eliminado estaba seleccionado, cerrar la vista
+      if (selectedArticle?.id === id) {
+        setSelectedArticle(null);
+        navigate('articles');
+      }
+      
+      alert("✅ Artículo eliminado correctamente");
+    } catch (err) {
+      console.error("🔥 ERROR al eliminar:", err);
+      alert("❌ Error al eliminar: " + err.message + "\n\nSi el problema persiste, elimina el artículo desde Firebase Console.");
+    }
+  };
 
   const addLink = async () => { if (!newLinkName || !newLinkUrl) return alert("❌ Completa campos"); await addDoc(collection(db, "links"), { name: newLinkName, url: newLinkUrl }); logActivity("enlace_creado", newLinkName); const snap = await getDocs(collection(db, "links")); setLinks(snap.docs.map(d => ({ id: d.id, ...d.data() }))); };
   const removeLink = async (id) => { await deleteDoc(doc(db, "links", id)); const snap = await getDocs(collection(db, "links")); setLinks(snap.docs.map(d => ({ id: d.id, ...d.data() }))); };
