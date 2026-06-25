@@ -126,9 +126,24 @@ export default function App() {
   const toggleDarkMode = () => setIsDarkMode(prev => !prev);
 
   // 🧭 FUNCIÓN DE NAVEGACIÓN SIMPLIFICADA
+
+  // Función para generar slugs limpios (sin acentos ni caracteres especiales)
+const generateSlug = (text) => {
+  return text
+    .toString()
+    .toLowerCase()
+    // Convertir caracteres acentuados a su versión sin acento
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Elimina diacríticos (tildes)
+    .replace(/ñ/g, 'n') // ñ → n
+    .replace(/[^a-z0-9]+/g, '-') // Solo letras y números
+    .replace(/^-+|-+$/g, '') // Elimina guiones al inicio y final
+    .replace(/--+/g, '-'); // Reemplaza múltiples guiones por uno solo
+};
+
 const navigate = (viewName, article = null) => {
   if (article) {
-    const slug = article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const slug = generateSlug(article.title);
     window.location.hash = `articulo/${slug}`;
     setSelectedArticle(article);
     setView('articles');
@@ -146,7 +161,7 @@ const navigate = (viewName, article = null) => {
     if (hash.startsWith('articulo/')) {
       const slug = hash.replace('articulo/', '');
       const article = articles.find(a => {
-        const articleSlug = a.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const articleSlug = generateSlug(a.title);
         return articleSlug === slug || a.id === slug;
       });
       if (article) {
@@ -349,9 +364,10 @@ const navigate = (viewName, article = null) => {
         await updateDoc(doc(db, "articles", editingId), data);
         logActivity("actualizado", `"${finalTitle}"`);
       } else {
-        await addDoc(collection(db, "articles"), data);
-        logActivity("creado", `"${finalTitle}"`);
-      }
+  const newId = crypto.randomUUID();
+  await setDoc(doc(db, "articles", newId), { ...data, id: newId });
+  logActivity("creado", `"${finalTitle}"`);
+}
 
       const snap = await getDocs(collection(db, "articles"));
       setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));

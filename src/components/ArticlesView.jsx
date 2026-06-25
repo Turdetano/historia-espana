@@ -172,7 +172,7 @@ export default function ArticlesView({
 
   const openArticle = (article) => {
     console.log('🔗 Abriendo artículo:', article.title);
-    console.log('🔗 ID:', article.id);
+    console.log('🔗 ID:', article.id || article.uid);
     setSelectedArticle(article);
     navigate('articles', article);
   };
