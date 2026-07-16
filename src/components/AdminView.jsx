@@ -25,7 +25,19 @@ const ToolbarButton = ({ active, onClick, children }) => (
   </button>
 );
 
-export default function AdminView({ user, role, users, activityLogs, title, setTitle, content, setContent, image, setImage, category, setCategory, editingId, setEditingId, CATEGORIES, publish, makeAdmin, makeEditor, deleteUserRole, toggleRole, copyUidToClipboard, copiedUid, logout, newLinkName, setNewLinkName, newLinkUrl, setNewLinkUrl, addLink, removeLink, links, isDarkMode }) {
+export default function AdminView({ 
+  user, role, users, activityLogs, 
+  title, setTitle, content, setContent, image, setImage, 
+  category, setCategory, 
+  // 🆕 NUEVOS PROPS PARA MODO CINEMATOGRÁFICO
+  isCinematic, setIsCinematic,
+  cinematicParticles, setCinematicParticles,
+  // RESTO DE PROPS
+  editingId, setEditingId, CATEGORIES, publish, makeAdmin, makeEditor, 
+  deleteUserRole, toggleRole, copyUidToClipboard, copiedUid, logout, 
+  newLinkName, setNewLinkName, newLinkUrl, setNewLinkUrl, addLink, removeLink, 
+  links, isDarkMode 
+}) {
   
   const [isImporting, setIsImporting] = useState(false);
   const [importMessage, setImportMessage] = useState("");
@@ -73,6 +85,14 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
       editor.commands.setContent(content || "");
     }
   }, [content, editor]);
+
+  // 🆕 Resetear valores cinematográficos al cancelar edición
+  useEffect(() => {
+    if (!editingId) {
+      setIsCinematic(false);
+      setCinematicParticles('dust');
+    }
+  }, [editingId, setIsCinematic, setCinematicParticles]);
 
   const handleFileImport = async (e) => {
     const file = e.target.files[0];
@@ -213,7 +233,7 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
            <EditorContent editor={editor} />
         </div>
 
-        {/* 🆕 SELECT DE CATEGORÍAS CORREGIDO (con value) */}
+        {/* SELECT DE CATEGORÍAS */}
         <select 
           value={category || CATEGORIES[0]} 
           onChange={e => {
@@ -230,7 +250,43 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
         <input value={image || ""} onChange={e => setImage(e.target.value)} placeholder="URL de Imagen (Cloudinary)" style={inputStyle} />
         {image && <img src={image} style={{ maxWidth: "100%", maxHeight: 150, marginTop: 10, borderRadius: 8, objectFit: "cover" }} alt="Preview" onError={(e) => { e.target.style.display = 'none'; }} />}
         
-        <br /><br />
+        {/* 🎬 SECCIÓN MODO CINEMATOGRÁFICO */}
+        <div style={{ 
+          marginTop: 20, 
+          padding: 15, 
+          borderRadius: 8, 
+          background: isDarkMode ? "#1e293b" : "#f8fafc",
+          border: `2px solid ${isCinematic ? "#fbbf24" : isDarkMode ? "#475569" : "#cbd5e1"}`
+        }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontWeight: 500 }}>
+            <input 
+              type="checkbox" 
+              checked={isCinematic || false}
+              onChange={(e) => setIsCinematic(e.target.checked)}
+              style={{ width: 18, height: 18, cursor: "pointer" }}
+            />
+            <span style={{ color: isDarkMode ? "#fbbf24" : "#1e3a8a" }}>🎬 Activar efectos cinematográficos</span>
+          </label>
+          
+          {isCinematic && (
+            <div style={{ marginTop: 12, paddingLeft: 28 }}>
+              <p style={{ margin: "0 0 8px 0", fontSize: 13, color: isDarkMode ? "#94a3b8" : "#64748b" }}>
+                Tipo de atmósfera:
+              </p>
+              <select 
+                value={cinematicParticles || 'dust'}
+                onChange={(e) => setCinematicParticles(e.target.value)}
+                style={{ ...inputStyle, marginBottom: 0, width: "auto", padding: "8px 12px" }}
+              >
+                <option value="dust">✨ Polvo dorado (Edad Antigua)</option>
+                <option value="mist">🌫️ Niebla (Edad Media)</option>
+                <option value="torch">🔥 Antorcha (Reconquista)</option>
+              </select>
+            </div>
+          )}
+        </div>
+        
+        <br />
         
         {/* BOTONES DE ACCIÓN */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 15 }}>
@@ -247,7 +303,9 @@ export default function AdminView({ user, role, users, activityLogs, title, setT
                 setTitle(""); 
                 setContent(""); 
                 setImage(""); 
-                setCategory(CATEGORIES[0]); // 🆕 Resetear categoría
+                setCategory(CATEGORIES[0]);
+                setIsCinematic(false);
+                setCinematicParticles('dust');
                 if(editor) editor.commands.clearContent(); 
               }} 
               style={{ ...btnDanger, marginLeft: 10 }}

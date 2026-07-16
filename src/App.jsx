@@ -11,6 +11,9 @@ import {
 } from "firebase/auth";
 import { useState, useEffect, useCallback } from "react";
 
+// 🎬 IMPORTAR ESTILOS
+import './App.css';
+
 // Importamos las Subcontratas (Componentes)
 import HomeView from "./components/HomeView";
 import ArticlesView from "./components/ArticlesView";
@@ -125,20 +128,21 @@ export default function App() {
 
   const toggleDarkMode = () => setIsDarkMode(prev => !prev);
 
-  // 🧭 FUNCIÓN DE NAVEGACIÓN SIMPLIFICADA
+  // 🎬 ESTADOS PARA MODO CINEMATOGRÁFICO (NUEVOS)
+  const [isCinematic, setIsCinematic] = useState(false);
+  const [cinematicParticles, setCinematicParticles] = useState('dust');
 
-  // Función para generar slugs limpios (sin acentos ni caracteres especiales)
+  // 🧭 FUNCIÓN DE NAVEGACIÓN SIMPLIFICADA
   const generateSlug = (text) => {
     return text
       .toString()
       .toLowerCase()
-      // Convertir caracteres acentuados a su versión sin acento
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Elimina diacríticos (tildes)
-      .replace(/ñ/g, 'n') // ñ → n
-      .replace(/[^a-z0-9]+/g, '-') // Solo letras y números
-      .replace(/^-+|-+$/g, '') // Elimina guiones al inicio y final
-      .replace(/--+/g, '-'); // Reemplaza múltiples guiones por uno solo
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/ñ/g, 'n')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/--+/g, '-');
   };
 
   const navigate = (viewName, article = null) => {
@@ -168,7 +172,8 @@ export default function App() {
         setView('articles');
         setSelectedArticle(article);
       }
-    } else if (['home', 'articles', 'links', 'admin', 'about'].includes(hash)) {
+    } 
+    else if (['home', 'articles', 'links', 'admin', 'about'].includes(hash)) {
       setView(hash);
       setSelectedArticle(null);
     }
@@ -344,7 +349,6 @@ export default function App() {
       return;
     }
 
-    // 🆕 VALIDACIÓN DE DUPLICADOS
     if (!editingId) {
       const existingArticle = articles.find(a => 
         a.title.toLowerCase() === finalTitle.toLowerCase()
@@ -356,19 +360,18 @@ export default function App() {
         );
         
         if (opcion) {
-          // Abrir el artículo existente para editar
           setTitle(existingArticle.title);
           setContent(existingArticle.content);
           setCategory(existingArticle.category);
           setImage(existingArticle.image || "");
           setEditingId(existingArticle.id);
-          setView("admin");
           return;
         }
       }
     }
 
     try {
+      // 🆕 OBJETO DATA ACTUALIZADO CON CAMPOS CINEMATOGRÁFICOS
       const data = {
         title: finalTitle,
         content: finalContent,
@@ -377,7 +380,10 @@ export default function App() {
         date: new Date().toLocaleDateString(),
         author: user.email,
         authorId: user.uid,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        // 🎬 CAMPOS CINEMATOGRÁFICOS (usando estados)
+        isCinematic: isCinematic,
+        cinematicParticles: cinematicParticles
       };
 
       if (!editingId) {
@@ -396,17 +402,21 @@ export default function App() {
       const snap = await getDocs(collection(db, "articles"));
       setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
 
+      // Resetear formulario
       setTitle("");
       setContent("");
       setImage("");
+      setCategory(CATEGORIES[0]);
       setEditingId(null);
+      setIsCinematic(false);
+      setCinematicParticles('dust');
 
       alert("✅ Artículo guardado y publicado correctamente.");
     } catch (err) {
       console.error("🔥 ERROR CRÍTICO AL GUARDAR:", err);
       alert("❌ Error al guardar: " + err.message);
     }
-  }, [content, title, category, image, editingId, user, checkAuth, logActivity, articles]);
+  }, [content, title, category, image, editingId, user, checkAuth, logActivity, articles, isCinematic, cinematicParticles]);
 
   const startEdit = (a) => { 
     if (!checkAuth()) return; 
@@ -415,15 +425,16 @@ export default function App() {
     setContent(a.content); 
     setCategory(a.category); 
     setImage(a.image || ""); 
+    // 🆕 Cargar valores cinematográficos si existen
+    setIsCinematic(a.isCinematic || false);
+    setCinematicParticles(a.cinematicParticles || 'dust');
     setEditingId(a.id); 
     setView("admin"); 
   };
 
-  // 🆕 MEJORA: removeArticle mejorada para owners/admins
   const removeArticle = async (id) => { 
     if (!checkAuth()) return; 
     
-    // Owners y admins pueden borrar cualquier artículo
     if (role !== "owner" && role !== "admin") {
       const article = articles.find(a => a.id === id);
       if (article?.authorId !== user?.uid) {
@@ -440,7 +451,6 @@ export default function App() {
       const snap = await getDocs(collection(db, "articles")); 
       setArticles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       
-      // Si el artículo eliminado estaba seleccionado, cerrar la vista
       if (selectedArticle?.id === id) {
         setSelectedArticle(null);
         navigate('articles');
@@ -549,6 +559,10 @@ export default function App() {
           user={user} role={role} users={users} activityLogs={activityLogs}
           title={title} setTitle={setTitle} content={content} setContent={setContent}
           image={image} setImage={setImage} category={category} setCategory={setCategory}
+          // 🆕 NUEVOS PROPS CINEMATOGRÁFICOS
+          isCinematic={isCinematic} setIsCinematic={setIsCinematic}
+          cinematicParticles={cinematicParticles} setCinematicParticles={setCinematicParticles}
+          // RESTO DE PROPS
           editingId={editingId} setEditingId={setEditingId} CATEGORIES={CATEGORIES}
           publish={publish} makeAdmin={makeAdmin} makeEditor={makeEditor} deleteUserRole={deleteUserRole} toggleRole={toggleRole}
           copyUidToClipboard={copyUidToClipboard} copiedUid={copiedUid} logout={logout}

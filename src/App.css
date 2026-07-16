@@ -40,3 +40,42 @@ button:hover {
 img {
   margin-top: 10px;
 }
+/* src/App.css */
+
+/* ... tus estilos actuales si los hay ... */
+
+/* =========================================
+   CINEMATIC ANIMATIONS (HISPANIA IMPERIAL)
+   ========================================= */
+
+@keyframes kenBurns {
+  0% { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.1) translate(-1%, -1%); }
+}
+
+@keyframes kenBurnsAlt {
+  0% { transform: scale(1.05) translate(0, 0); }
+  100% { transform: scale(1.15) translate(1%, 1%); }
+}
+
+@keyframes torchFlicker {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes dustFloat {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  50% { opacity: 0.5; }
+  100% { transform: translateY(-20px) translateX(10px); opacity: 0; }
+}
+
+/* Clases de utilidad */
+.animate-ken-burns {
+  animation: kenBurns 20s ease-in-out infinite alternate;
+}
+.animate-ken-burns-alt {
+  animation: kenBurnsAlt 25s ease-in-out infinite alternate;
+}
+.animate-flicker {
+  animation: torchFlicker 4s ease-in-out infinite;
+}

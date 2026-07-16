@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { btnPrimary, btnDanger, btnPDF } from '../App'; 
+import CinematicCard from './CinematicCard';
+import CinematicParticles from './CinematicParticles';
 
 // Componente para la tarjeta de artículo en la lista
 function ArticleCard({ a, isNew, isDarkMode, onOpen }) {
@@ -28,8 +30,23 @@ function ArticleCard({ a, isNew, isDarkMode, onOpen }) {
 
 // Componente para vista individual del artículo
 function ArticleFullView({ article, user, role, startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode, onBack }) {
+  // Extraemos texto plano para la descripción (sin etiquetas HTML)
+  const plainTextDesc = article.content ? article.content.replace(/<[^>]+>/g, '').substring(0, 140) + '...' : '';
+
+  // Determinar el tipo de partículas según la categoría
+  const particleType = 
+    article.category === 'Edad Antigua' ? 'dust' :
+    article.category === 'Edad Media' ? 'mist' :
+    article.category === 'Reconquista' ? 'torch' : 'dust';
+
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
+      {/* 🎬 EFECTOS CINEMATOGRÁFICOS OVERLAY */}
+      <CinematicParticles 
+        type={particleType}
+        isActive={true}
+      />
+      
       <button 
         onClick={onBack}
         style={{...btnPrimary, marginBottom: 20, background: "#64748b"}}
@@ -37,10 +54,23 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
         ← Volver a la lista
       </button>
       
+      {/* 🎬 CABECERA CINEMATOGRÁFICA */}
+      <div style={{ marginBottom: 20 }}>
+        <CinematicCard
+          image={article.image || '/img/default-historia.jpg'}
+          title={article.title}
+          subtitle={`${article.category} • ${article.date}`}
+          description={plainTextDesc}
+          link="#"
+          variant="alt"
+          isDarkMode={isDarkMode}
+          particles={particleType}
+        />
+      </div>
+      
+      {/* CONTENIDO PRINCIPAL DEL ARTÍCULO */}
       <div 
         style={{
-          maxHeight: '75vh',
-          overflowY: 'auto',
           padding: '25px',
           borderRadius: '12px',
           background: isDarkMode ? '#1e293b' : '#fff',
@@ -49,23 +79,6 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
           lineHeight: '1.7'
         }}
       >
-        <h1 style={{color: isDarkMode ? "#fbbf24" : "#1e3a8a", marginBottom: 10, fontFamily: "Georgia, serif"}}>
-          {article.title}
-          {isNew(article) && <span className="badge-new">✨ Nuevo</span>}
-        </h1>
-        <p style={{fontSize: 14, color: isDarkMode ? "#94a3b8" : "#64748b", marginBottom: 20}}>
-          📚 {article.category} | 📅 {article.date}
-        </p>
-        
-        {article.image && (
-          <img 
-            src={article.image} 
-            alt={article.title}
-            style={{width: "100%", borderRadius: 8, marginBottom: 20}}
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
-        )}
-        
         <div 
           style={{color: isDarkMode ? "#e2e8f0" : "#111", fontSize: 16, lineHeight: 1.7}}
           dangerouslySetInnerHTML={{ __html: article.content }}
@@ -172,7 +185,7 @@ export default function ArticlesView({
 
   const openArticle = (article) => {
     console.log('🔗 Abriendo artículo:', article.title);
-    console.log('🔗 ID:', article.id || article.uid);
+    console.log(' ID:', article.id || article.uid);
     setSelectedArticle(article);
     navigate('articles', article);
   };
