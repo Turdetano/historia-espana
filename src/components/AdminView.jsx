@@ -119,7 +119,7 @@ export default function AdminView({
   // FUNCIÓN PARA INSERTAR IMAGEN DESDE URL
   const insertImage = () => {
     if (!editor) return;
-    const url = prompt("🖼️ Introduce la URL de la imagen (Cloudinary):");
+    const url = prompt("️ Introduce la URL de la imagen (Cloudinary):");
     if (url && url.trim() !== "") {
       editor.chain().focus().setImage({ 
         src: url,
@@ -138,7 +138,7 @@ export default function AdminView({
       <h2>🏛️ Contexto Histórico</h2>
       <p>Sitúa al lector en la época. ¿Dónde? ¿Cuándo? ¿Por qué es importante?</p>
       
-      <h2>⚔️ Desarrollo de los Hechos</h2>
+      <h2>️ Desarrollo de los Hechos</h2>
       <p>Cuerpo principal del artículo. Usa párrafos cortos.</p>
       <ul>
         <li>Dato relevante 1</li>
@@ -197,7 +197,7 @@ export default function AdminView({
           <p style={{ fontWeight: "bold", margin: 0, color: isDarkMode ? "#e2e8f0" : "#0f172a" }}>Haz clic para seleccionar archivo</p>
           <input type="file" accept=".docx,.txt" onChange={handleFileImport} style={{ display: 'none' }} />
         </label>
-        {isImporting && <p style={{ textAlign: "center", color: "#60a5fa", marginTop: 10, fontWeight: "bold" }}>⏳ Procesando archivo...</p>}
+        {isImporting && <p style={{ textAlign: "center", color: "#60a5fa", marginTop: 10, fontWeight: "bold" }}> Procesando archivo...</p>}
         {importMessage && !isImporting && <p style={{ textAlign: "center", marginTop: 10, fontWeight: "bold", color: importMessage.includes('✅') || importMessage.includes('Plantilla') ? '#15803d' : '#b91c1c' }}>{importMessage}</p>}
       </div>
 
@@ -250,7 +250,7 @@ export default function AdminView({
         <input value={image || ""} onChange={e => setImage(e.target.value)} placeholder="URL de Imagen (Cloudinary)" style={inputStyle} />
         {image && <img src={image} style={{ maxWidth: "100%", maxHeight: 150, marginTop: 10, borderRadius: 8, objectFit: "cover" }} alt="Preview" onError={(e) => { e.target.style.display = 'none'; }} />}
         
-        {/* 🎬 SECCIÓN MODO CINEMATOGRÁFICO */}
+        {/*  SECCIÓN MODO CINEMATOGRÁFICO */}
         <div style={{ 
           marginTop: 20, 
           padding: 15, 
@@ -265,7 +265,7 @@ export default function AdminView({
               onChange={(e) => setIsCinematic(e.target.checked)}
               style={{ width: 18, height: 18, cursor: "pointer" }}
             />
-            <span style={{ color: isDarkMode ? "#fbbf24" : "#1e3a8a" }}>🎬 Activar efectos cinematográficos</span>
+            <span style={{ color: isDarkMode ? "#fbbf24" : "#1e3a8a" }}> Activar efectos cinematográficos</span>
           </label>
           
           {isCinematic && (
@@ -281,6 +281,8 @@ export default function AdminView({
                 <option value="dust">✨ Polvo dorado (Edad Antigua)</option>
                 <option value="mist">🌫️ Niebla (Edad Media)</option>
                 <option value="torch">🔥 Antorcha (Reconquista)</option>
+                <option value="gold">👑 Oro Imperial (Imperio Español)</option>
+                <option value="sparks">⚡ Chispas Eléctricas (Edad Contemporánea)</option>
               </select>
             </div>
           )}
@@ -357,7 +359,7 @@ export default function AdminView({
 
       {/* GESTIÓN ENLACES */}
       <div style={cardStyle}>
-        <h2 style={{ color: isDarkMode ? "#fbbf24" : "#020617", background: isDarkMode ? "#334155" : "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}>🔧 Gestionar Enlaces</h2>
+        <h2 style={{ color: isDarkMode ? "#fbbf24" : "#020617", background: isDarkMode ? "#334155" : "#e2e8f0", padding: "10px", borderRadius: "8px", display: "inline-block", fontWeight: "900", fontFamily: "Georgia, serif" }}> Gestionar Enlaces</h2>
         <div style={{ marginTop: 15, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <input value={newLinkName} onChange={e => setNewLinkName(e.target.value)} placeholder="Nombre del sitio" style={{ flex: 1, padding: 10, borderRadius: 6, border: "1px solid #cbd5e1" }} />
           <input value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} placeholder="https://..." style={{ flex: 2, padding: 10, borderRadius: 6, border: "1px solid #cbd5e1" }} />

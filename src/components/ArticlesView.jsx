@@ -37,7 +37,10 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
   const particleType = 
     article.category === 'Edad Antigua' ? 'dust' :
     article.category === 'Edad Media' ? 'mist' :
-    article.category === 'Reconquista' ? 'torch' : 'dust';
+    article.category === 'Reconquista' ? 'torch' :
+    article.category === 'Imperio Español' ? 'gold' :
+    article.category === 'Edad Contemporánea' ? 'sparks' :
+    'dust';
 
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
@@ -127,7 +130,7 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
           {(role === "owner" || role === "admin" || (role === "editor" && article.authorId === user?.uid)) && (
             <>
               <button onClick={() => sendToTelegram(article)} style={{...btnPrimary, width: "100%", marginTop: 10}}>
-                📤 Enviar a Telegram
+                 Enviar a Telegram
               </button>
               <button onClick={() => startEdit(article)} style={{...btnPrimary, background: "#059669", width: "100%", marginTop: 10}}>
                 ✏️ Editar
@@ -257,7 +260,7 @@ export default function ArticlesView({
             }}
           >
             <option value="newest">📅 Más recientes</option>
-            <option value="oldest">📅 Más antiguos</option>
+            <option value="oldest"> Más antiguos</option>
           </select>
           {(searchTerm || searchCategory !== "all" || sortBy !== "newest") && (
             <button onClick={clearFilters} style={{...btnPrimary, background: isDarkMode ? "#fff" : "#fff", color: "#1e3a8a", border: `2px solid ${isDarkMode ? "#fbbf24" : "#1d4ed8"}`, padding: "10px 16px"}}>🧹 Limpiar</button>
