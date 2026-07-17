@@ -2,17 +2,31 @@ import { useEffect, useState } from 'react';
 
 export default function CinematicParticles({ type, isActive }) {
   const [particles, setParticles] = useState([]);
+  const [shouldRender, setShouldRender] = useState(false);
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive) {
+      setShouldRender(false);
+      return;
+    }
 
-    // Configuración según tipo
+    //  DETECTAR PREFERENCIA DE MOVIMIENTO REDUCIDO (Accesibilidad)
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    
+    if (prefersReducedMotion) {
+      setShouldRender(false);
+      return;
+    }
+
+    setShouldRender(true);
+
+    // Configuración según tipo (OPTIMIZADA - Menos partículas)
     const configs = {
-      dust: { count: 50, minSize: 2, maxSize: 4, duration: [3, 7] },
-      mist: { count: 30, minSize: 50, maxSize: 100, duration: [8, 15] },
-      torch: { count: 40, minSize: 10, maxSize: 30, duration: [1, 3] },
-      gold: { count: 60, minSize: 3, maxSize: 6, duration: [2, 5] }, // NUEVO
-      sparks: { count: 70, minSize: 1, maxSize: 3, duration: [1, 2] }  // NUEVO
+      dust: { count: 30, minSize: 2, maxSize: 4, duration: [3, 7] },      // Antes: 50
+      mist: { count: 20, minSize: 50, maxSize: 100, duration: [8, 15] },  // Antes: 30
+      torch: { count: 25, minSize: 10, maxSize: 30, duration: [1, 3] },   // Antes: 40
+      gold: { count: 35, minSize: 3, maxSize: 6, duration: [2, 5] },      // Antes: 60
+      sparks: { count: 40, minSize: 1, maxSize: 3, duration: [1, 2] }     // Antes: 70
     };
 
     const config = configs[type] || configs.dust;
@@ -28,7 +42,7 @@ export default function CinematicParticles({ type, isActive }) {
     setParticles(newParticles);
   }, [type, isActive]);
 
-  if (!isActive) return null;
+  if (!shouldRender) return null;
 
   return (
     <div style={{
