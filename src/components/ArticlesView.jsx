@@ -83,9 +83,10 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
           lineHeight: '1.7'
         }}
       >
-        <div 
-          style={{color: isDarkMode ? "#e2e8f0" : "#111", fontSize: 16, lineHeight: 1.7}}
-          dangerouslySetInnerHTML={{ __html: article.content }}
+       <div 
+  className="article-content"
+  style={{color: isDarkMode ? "#e2e8f0" : "#111", fontSize: 16, lineHeight: 1.7, textAlign: "left"}}
+  dangerouslySetInnerHTML={{ __html: article.content }}
         />
         
         <style>{`
