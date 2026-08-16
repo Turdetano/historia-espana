@@ -79,6 +79,7 @@ export default function CinematicCard({
             color: "#fff",
             fontFamily: "Georgia, serif",
             lineHeight: 1.15,
+            textAlign: "left",
             textShadow: "2px 2px 6px rgba(0,0,0,0.85)",
           }}
         >

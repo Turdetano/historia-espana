@@ -32,6 +32,7 @@ function ArticleCard({ a, isNew, isDarkMode, onOpen }) {
 function ArticleFullView({ article, user, role, startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode, onBack }) {
   // Extraemos texto plano para la descripción (sin etiquetas HTML)
   const plainTextDesc = article.content ? article.content.replace(/<[^>]+>/g, '').substring(0, 140) + '...' : '';
+  const heroImage = article.image || (article.content && (article.content.match(/<img[^>]+src="([^"]+)"/) || [])[1]) || '/img/default-historia.jpg';
 
   // Determinar el tipo de partículas según la categoría
   const particleType = 
@@ -60,7 +61,7 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
       {/* 🎬 CABECERA CINEMATOGRÁFICA */}
       <div style={{ marginBottom: 20 }}>
         <CinematicCard
-          image={article.image || '/img/default-historia.jpg'}
+          image={heroImage}
           title={article.title}
           subtitle={`${article.category} • ${article.date}`}
           description={plainTextDesc}
