@@ -46,11 +46,11 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
       {/* 🎬 EFECTOS CINEMATOGRÁFICOS OVERLAY */}
-      <CinematicParticles 
-        type={particleType}
-        isActive={true}
-      />
-      
+      <CinematicParticles
+  type={particleType}
+  isActive={!!article.isCinematic}
+/>
+            
       <button 
         onClick={onBack}
         style={{...btnPrimary, marginBottom: 20, background: "#64748b"}}
