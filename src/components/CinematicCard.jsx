@@ -1,105 +1,103 @@
-import { useEffect, useState } from 'react';
-
-export default function CinematicParticles({ type, isActive }) {
-  const [particles, setParticles] = useState([]);
-
-  useEffect(() => {
-    if (!isActive) return;
-
-    const particleCount = type === 'dust' ? 50 : type === 'mist' ? 30 : 40;
-    const newParticles = Array.from({ length: particleCount }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      delay: Math.random() * 5,
-      duration: type === 'dust' ? 3 + Math.random() * 4 : type === 'mist' ? 8 + Math.random() * 7 : 1 + Math.random() * 2,
-      size: type === 'dust' ? 2 + Math.random() * 4 : type === 'mist' ? 50 + Math.random() * 100 : 10 + Math.random() * 30,
-    }));
-    setParticles(newParticles);
-  }, [type, isActive]);
-
-  if (!isActive) return null;
-
+// src/components/CinematicCard.jsx
+// 🎬 CABECERA HERO DEL ARTÍCULO
+// Imagen con efecto kenBurns + categoría + título + entradilla.
+export default function CinematicCard({
+  image,
+  title,
+  subtitle,
+  description,
+  isDarkMode,
+  variant,   // aceptado por compatibilidad con ArticlesView
+  link,      // aceptado por compatibilidad
+  particles  // aceptado por compatibilidad
+}) {
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      pointerEvents: 'none',
-      zIndex: 9999,
-      overflow: 'hidden',
-    }}>
-      <style>{`
-        @keyframes float-up {
-          0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-          10% { opacity: 0.6; }
-          90% { opacity: 0.6; }
-          100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
-        }
-        @keyframes fog-drift {
-          0%, 100% { transform: translateX(-20%) scale(1); opacity: 0.3; }
-          50% { transform: translateX(20%) scale(1.1); opacity: 0.6; }
-        }
-        @keyframes flame-flicker {
-          0%, 100% { transform: scale(1); opacity: 0.8; }
-          50% { transform: scale(1.2); opacity: 1; }
-        }
-        .particle-dust {
-          position: absolute;
-          background: radial-gradient(circle, rgba(255,215,0,0.8) 0%, transparent 70%);
-          border-radius: 50%;
-          animation: float-up linear infinite;
-          filter: blur(1px);
-        }
-        .particle-mist {
-          position: absolute;
-          background: radial-gradient(ellipse, rgba(200,210,220,0.4) 0%, transparent 70%);
-          border-radius: 50%;
-          animation: fog-drift ease-in-out infinite;
-          filter: blur(30px);
-        }
-        .particle-torch {
-          position: absolute;
-          background: radial-gradient(circle, rgba(255,107,53,0.9) 0%, rgba(247,147,30,0) 70%);
-          border-radius: 50%;
-          animation: flame-flicker ease-in-out infinite;
-          filter: blur(3px);
-        }
-      `}</style>
-
-      {type === 'dust' && particles.map((p) => (
-        <div key={p.id} className="particle-dust" style={{
-          left: `${p.left}%`,
-          width: `${p.size}px`,
-          height: `${p.size}px`,
-          animationDuration: `${p.duration}s`,
-          animationDelay: `${p.delay}s`,
-          bottom: '-20px',
-        }} />
-      ))}
-
-      {type === 'mist' && particles.map((p) => (
-        <div key={p.id} className="particle-mist" style={{
-          left: `${p.left}%`,
-          width: `${p.size}px`,
-          height: `${p.size * 0.6}px`,
-          animationDuration: `${p.duration}s`,
-          animationDelay: `${p.delay}s`,
-          top: `${Math.random() * 100}%`,
-        }} />
-      ))}
-
-      {type === 'torch' && particles.map((p) => (
-        <div key={p.id} className="particle-torch" style={{
-          left: `${p.left}%`,
-          width: `${p.size}px`,
-          height: `${p.size}px`,
-          animationDuration: `${p.duration}s`,
-          animationDelay: `${p.delay}s`,
-          bottom: `${Math.random() * 50}%`,
-        }} />
-      ))}
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        minHeight: 320,
+        borderRadius: 14,
+        overflow: "hidden",
+        border: `2px solid ${isDarkMode ? "#fbbf24" : "#1e3a8a"}`,
+        boxShadow: isDarkMode ? "0 8px 30px rgba(0,0,0,0.5)" : "0 8px 24px rgba(0,0,0,0.2)",
+        background: isDarkMode ? "#0f172a" : "#e2e8f0",
+      }}
+    >
+      {/* IMAGEN CON EFECTO KEN BURNS */}
+      <div
+        className={variant === "alt" ? "animate-ken-burns-alt" : "animate-ken-burns"}
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: `url(${image})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
+      {/* DEGRADADO PARA LEGIBILIDAD DEL TEXTO */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(to top, rgba(2,6,23,0.95) 0%, rgba(2,6,23,0.65) 45%, rgba(2,6,23,0.15) 100%)",
+        }}
+      />
+      {/* TEXTOS */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          padding: "20px 22px",
+          textAlign: "left",
+        }}
+      >
+        {subtitle && (
+          <p
+            style={{
+              margin: "0 0 8px 0",
+              fontSize: 13,
+              fontWeight: 700,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              color: "#fbbf24",
+              fontFamily: "Georgia, serif",
+              textShadow: "1px 1px 3px rgba(0,0,0,0.8)",
+            }}
+          >
+            {subtitle}
+          </p>
+        )}
+        <h1
+          style={{
+            margin: "0 0 10px 0",
+            fontSize: "clamp(24px, 5vw, 38px)",
+            fontWeight: 900,
+            color: "#fff",
+            fontFamily: "Georgia, serif",
+            lineHeight: 1.15,
+            textShadow: "2px 2px 6px rgba(0,0,0,0.85)",
+          }}
+        >
+          {title}
+        </h1>
+        {description && (
+          <p
+            style={{
+              margin: 0,
+              fontSize: 15,
+              lineHeight: 1.6,
+              color: "#e2e8f0",
+              textShadow: "1px 1px 3px rgba(0,0,0,0.8)",
+            }}
+          >
+            {description}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
