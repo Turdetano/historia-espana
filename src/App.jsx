@@ -464,26 +464,26 @@ export default function App() {
   };
 
   const addLink = async () => { if (!newLinkName || !newLinkUrl) return alert("❌ Completa campos"); await addDoc(collection(db, "links"), { name: newLinkName, url: newLinkUrl }); logActivity("enlace_creado", newLinkName); const snap = await getDocs(collection(db, "links")); setLinks(snap.docs.map(d => ({ id: d.id, ...d.data() }))); };
-  const removeLink = async (id) => { await deleteDoc(doc(db, "links", id)); const snap = await getDocs(collection(db, "links")); setLinks(snap.docs.map(d => ({ id: d.id, ...d.data() }))); };
-
-  const sendToTelegram = async (a) => {
+    const removeLink = async (id) => { await deleteDoc(doc(db, "links", id)); const snap = await getDocs(collection(db, "links")); setLinks(snap.docs.map(d => ({ id: d.id, ...d.data() }))); };
+    const sendToTelegram = async (a) => {
     if (!checkAuth()) return;
     const lastSend = localStorage.getItem(`tg_cooldown_${user.uid}`);
     if (lastSend && (Date.now() - parseInt(lastSend)) < 300000) return alert(`⏳ Espera ${Math.ceil((300000 - (Date.now() - parseInt(lastSend))) / 1000)}s`);
     if (!confirm("¿Enviar a Telegram?")) return;
-    const BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
-    const CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
-    if (!BOT_TOKEN || !CHAT_ID) return alert("⚠️ Credenciales Telegram faltantes");
-    const safeTitle = a.title.replace(/[*_`~[\]\\]/g, "");
-    const safeContent = a.content.replace(/[*_`~[\]\\]/g, "");
-    const header = `📜 *${safeTitle}*\n📚 ${a.category}\n\n`;
     try {
-      if (a.image) await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: CHAT_ID, photo: a.image, caption: header, parse_mode: "Markdown" }) });
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: CHAT_ID, text: header + safeContent, parse_mode: "Markdown" }) });
+      const res = await fetch("/api/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: a.title, content: a.content, image: a.image || null, category: a.category })
+      });
+      if (!res.ok) throw new Error("Respuesta " + res.status);
       localStorage.setItem(`tg_cooldown_${user.uid}`, Date.now().toString());
       logActivity("telegram_enviado", `"${a.title}"`);
       alert("✅ Enviado");
-    } catch (err) { alert("❌ Error"); }
+    } catch (err) {
+      console.error("Error Telegram:", err);
+      alert("❌ Error al enviar a Telegram");
+    }
   };
 
   const exportToPDF = async (a) => {
