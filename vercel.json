@@ -1,5 +1,17 @@
 {
   "rewrites": [
+    {
+      "source": "/articulo/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(.*)(TelegramBot|WhatsApp|Twitterbot|facebookexternalhit|LinkedInBot|Googlebot|Bingbot)(.*)"
+        }
+      ],
+      "destination": "/api/seo?slug=:slug"
+    },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     const texto = stripHtml(content);
     const slug = generateSlug(title);
     // Cuando migremos las rutas (Punto 8), cambiaremos "/#articulo/" por "/articulo/"
-    const enlace = `${SITE}/#articulo/${slug}`;
+   const enlace = `${SITE}/articulo/${slug}`;
     const cuerpo = texto.length > 3500 ? texto.slice(0, 3500) + "\n… (continúa en la web)" : texto;
     const mensaje = `📜 ${title}\n📚 ${category || "Historia de España"}\n\n${cuerpo}\n\n🔗 Leer completo con fuentes y mapas:\n${enlace}`;
 
