@@ -145,39 +145,59 @@ export default function App() {
       .replace(/--+/g, '-');
   };
 
-  const navigate = (viewName, article = null) => {
+    const navigate = (viewName, article = null) => {
     if (article) {
       const slug = generateSlug(article.title);
-      window.location.hash = `articulo/${slug}`;
+      window.history.pushState({}, "", `/articulo/${slug}`);
       setSelectedArticle(article);
       setView('articles');
     } else {
-      window.location.hash = viewName;
+      window.history.pushState({}, "", viewName === 'home' ? '/' : `/${viewName}`);
       setView(viewName);
       setSelectedArticle(null);
     }
   };
 
-  // 🧭 ESCUCHAR CAMBIOS DE HASH AL CARGAR
+    // 🧭 SINCRONIZAR URL ↔ ESTADO (rutas limpias + botones atrás/adelante)
+  const [urlTick, setUrlTick] = useState(0);
+
   useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    
-    if (hash.startsWith('articulo/')) {
-      const slug = hash.replace('articulo/', '');
-      const article = articles.find(a => {
-        const articleSlug = generateSlug(a.title);
-        return articleSlug === slug || a.id === slug;
-      });
+    const onPop = () => setUrlTick(t => t + 1);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // 🧭 LEER LA URL: redirige enlaces ANTIGUOS con # y aplica rutas limpias
+  useEffect(() => {
+    // 1) Enlaces antiguos con # → redirección transparente (no rompe compartidos)
+    const hash = window.location.hash;
+    if (hash.startsWith('#articulo/')) {
+      window.history.replaceState({}, '', `/articulo/${hash.slice('#articulo/'.length)}`);
+    } else if (hash) {
+      const v = hash.slice(1);
+      if (['home', 'articles', 'links', 'admin', 'about'].includes(v)) {
+        window.history.replaceState({}, '', v === 'home' ? '/' : `/${v}`);
+      }
+    }
+    // 2) Leer la ruta limpia y aplicar el estado
+    const path = window.location.pathname;
+    if (path.startsWith('/articulo/')) {
+      const slug = path.slice('/articulo/'.length);
+      const article = articles.find(a => generateSlug(a.title) === slug || a.id === slug);
       if (article) {
         setView('articles');
         setSelectedArticle(article);
       }
-    } 
-    else if (['home', 'articles', 'links', 'admin', 'about'].includes(hash)) {
-      setView(hash);
+    } else {
+      const v = path.replace(/^\//, '');
+      if (['articles', 'links', 'admin', 'about'].includes(v)) {
+        setView(v);
+      } else {
+        setView('home');
+      }
       setSelectedArticle(null);
     }
-  }, [articles]);
+  }, [articles, urlTick]);
 
   // --- AUTH & ROLES ---
   useEffect(() => {
