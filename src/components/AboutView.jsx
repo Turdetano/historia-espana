@@ -131,6 +131,49 @@ export default function AboutView({ setView, isDarkMode }) {
         </div>
       </div>
 
+      {/* MÉTODO VISUAL Y FUENTES */}
+      <div style={{ 
+        background: isDarkMode ? "#1e293b" : "#fff", 
+        padding: 30, 
+        borderRadius: 15, 
+        marginBottom: 25,
+        boxShadow: isDarkMode ? "0 4px 16px rgba(0,0,0,0.3)" : "0 4px 16px rgba(0,0,0,0.1)",
+        border: `2px solid ${isDarkMode ? "#334155" : "#e2e8f0"}`
+      }}>
+        <h2 style={{ 
+          fontSize: "24px", 
+          color: isDarkMode ? "#fbbf24" : "#1e3a8a", 
+          marginBottom: 20,
+          fontFamily: "Georgia, serif",
+          borderBottom: `2px solid ${isDarkMode ? "#fbbf24" : "#fbbf24"}`,
+          paddingBottom: 10
+        }}>
+          🎨 Método Visual y Fuentes
+        </h2>
+        <p style={{ lineHeight: 1.8, color: isDarkMode ? "#e2e8f0" : "#334155", fontSize: "16px" }}>
+          Las recreaciones visuales de nuestros documentales están generadas con{" "}
+          <strong>inteligencia artificial</strong> a partir de documentación histórica. Son la{" "}
+          <em>capa estética</em> de la obra, no su fuente: de ellas no procede ningún dato, fecha
+          ni interpretación.
+        </p>
+        <p style={{ lineHeight: 1.8, color: isDarkMode ? "#e2e8f0" : "#334155", fontSize: "16px", marginTop: 15 }}>
+          Lo importante —el contenido, los datos y su comprobación— vive en cada artículo con
+          fuentes, enlazado desde cada vídeo. Donde existe debate historiográfico, lo mostramos
+          explícitamente.
+        </p>
+        <p style={{ 
+          lineHeight: 1.8, 
+          color: isDarkMode ? "#fbbf24" : "#1e3a8a", 
+          fontSize: "17px", 
+          marginTop: 15,
+          fontStyle: "italic",
+          fontWeight: "bold",
+          fontFamily: "Georgia, serif"
+        }}>
+          La imagen ilustra. El documento respalda.
+        </p>
+      </div>
+
       {/* LLAMADA A LA ACCIÓN */}
       <div style={{ textAlign: "center", marginTop: 40 }}>
         <button 
