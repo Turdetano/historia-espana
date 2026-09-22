@@ -1,24 +1,48 @@
 import { useState, useMemo } from 'react';
-import { btnPrimary, btnDanger, btnPDF } from '../App'; 
+import { btnPrimary, btnDanger, btnPDF } from '../App';
 import CinematicCard from './CinematicCard';
 import CinematicParticles from './CinematicParticles';
+
+// Sello de doctrina al pie de cada artículo
+function DoctrineFooter({ isDarkMode }) {
+  return (
+    <div style={{
+      marginTop: 25,
+      padding: "15px 20px",
+      borderLeft: `4px solid ${isDarkMode ? "#fbbf24" : "#d97706"}`,
+      background: isDarkMode ? "rgba(251,191,36,0.08)" : "rgba(217,119,6,0.06)",
+      borderRadius: "0 10px 10px 0",
+      fontSize: "14px",
+      lineHeight: 1.7,
+      color: isDarkMode ? "#94a3b8" : "#64748b"
+    }}>
+      🎨 Recreaciones visuales generadas con IA sobre documentación histórica.{" "}
+      <em>La imagen ilustra; el documento respalda.</em>{" "}
+      <a
+        href="/about"
+        style={{ color: isDarkMode ? "#fbbf24" : "#1e3a8a", fontWeight: "bold", textDecoration: "underline" }}
+      >
+        Método y fuentes: Sobre el Proyecto →
+      </a>
+    </div>
+  );
+}
 
 // Componente para la tarjeta de artículo en la lista
 function ArticleCard({ a, isNew, isDarkMode, onOpen }) {
   return (
-    <div style={{ 
-      background: isDarkMode ? "#1e293b" : "#fff", 
-      padding: 15, 
-      marginBottom: 15, 
-      borderRadius: 10, 
-      borderLeft: `4px solid ${isDarkMode ? "#475569" : "#e2e8f0"}` 
+    <div style={{
+      background: isDarkMode ? "#1e293b" : "#fff",
+      padding: 15,
+      marginBottom: 15,
+      borderRadius: 10,
+      borderLeft: `4px solid ${isDarkMode ? "#475569" : "#e2e8f0"}`
     }}>
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <h3 style={{ margin: 0, fontFamily: "Georgia, serif", color: isDarkMode ? "#f1f5f9" : "#020617" }}>{a.title}</h3>
         {isNew(a) && <span className="badge-new">✨ NUEVO</span>}
       </div>
-      
-      <button 
+      <button
         onClick={() => onOpen(a)}
         style={{...btnPrimary, width: "100%", marginTop: 10}}
       >
@@ -35,7 +59,7 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
   const heroImage = article.image || (article.content && (article.content.match(/<img[^>]+src="([^"]+)"/) || [])[1]) || '/img/default-historia.jpg';
 
   // Determinar el tipo de partículas según la categoría
-  const particleType = 
+  const particleType =
     article.category === 'Edad Antigua' ? 'dust' :
     article.category === 'Edad Media' ? 'mist' :
     article.category === 'Reconquista' ? 'torch' :
@@ -47,17 +71,15 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
       {/* 🎬 EFECTOS CINEMATOGRÁFICOS OVERLAY */}
       <CinematicParticles
-  type={particleType}
-  isActive={!!article.isCinematic}
-/>
-            
-      <button 
+        type={particleType}
+        isActive={!!article.isCinematic}
+      />
+      <button
         onClick={onBack}
         style={{...btnPrimary, marginBottom: 20, background: "#64748b"}}
       >
         ← Volver a la lista
       </button>
-      
       {/* 🎬 CABECERA CINEMATOGRÁFICA */}
       <div style={{ marginBottom: 20 }}>
         <CinematicCard
@@ -71,9 +93,8 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
           particles={particleType}
         />
       </div>
-      
       {/* CONTENIDO PRINCIPAL DEL ARTÍCULO */}
-      <div 
+      <div
         style={{
           padding: '25px',
           borderRadius: '12px',
@@ -83,12 +104,11 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
           lineHeight: '1.7'
         }}
       >
-       <div 
-  className="article-content"
-  style={{color: isDarkMode ? "#e2e8f0" : "#111", fontSize: 16, lineHeight: 1.7, textAlign: "left"}}
-  dangerouslySetInnerHTML={{ __html: article.content }}
+        <div
+          className="article-content"
+          style={{color: isDarkMode ? "#e2e8f0" : "#111", fontSize: 16, lineHeight: 1.7, textAlign: "left"}}
+          dangerouslySetInnerHTML={{ __html: article.content }}
         />
-        
         <style>{`
           .article-content img {
             max-width: 100%;
@@ -124,7 +144,6 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
             border-radius: 0 8px 8px 0;
           }
         `}</style>
-        
         <div style={{marginTop: 30, paddingTop: 20, borderTop: `1px solid ${isDarkMode ? "#334155" : "#e2e8f0"}`}}>
           <button onClick={() => exportToPDF(article)} style={btnPDF}>
             📄 Descargar PDF
@@ -132,7 +151,7 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
           {(role === "owner" || role === "admin" || (role === "editor" && article.authorId === user?.uid)) && (
             <>
               <button onClick={() => sendToTelegram(article)} style={{...btnPrimary, width: "100%", marginTop: 10}}>
-                 Enviar a Telegram
+                Enviar a Telegram
               </button>
               <button onClick={() => startEdit(article)} style={{...btnPrimary, background: "#059669", width: "100%", marginTop: 10}}>
                 ✏️ Editar
@@ -144,13 +163,15 @@ function ArticleFullView({ article, user, role, startEdit, removeArticle, sendTo
           )}
         </div>
       </div>
+      {/* 🎨 SELLO DE DOCTRINA */}
+      <DoctrineFooter isDarkMode={isDarkMode} />
     </div>
   );
 }
 
-export default function ArticlesView({ 
+export default function ArticlesView({
   articles, user, role, selectedArticle, setSelectedArticle, navigate,
-  startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode 
+  startEdit, removeArticle, sendToTelegram, exportToPDF, isNew, isDarkMode
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchCategory, setSearchCategory] = useState("all");
@@ -203,7 +224,7 @@ export default function ArticlesView({
   // SI HAY UN ARTÍCULO SELECCIONADO, MOSTRAR VISTA COMPLETA
   if (selectedArticle) {
     return (
-      <ArticleFullView 
+      <ArticleFullView
         article={selectedArticle}
         user={user}
         role={role}
@@ -221,14 +242,14 @@ export default function ArticlesView({
   // SI NO HAY ARTÍCULO SELECCIONADO, MOSTRAR LISTA
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
-      <div className="search-bar" style={{ 
+      <div className="search-bar" style={{
         background: isDarkMode ? "#1e293b" : "#fff",
         border: `1px solid ${isDarkMode ? "#334155" : "#e2e8f0"}`
       }}>
-        <input 
-          type="text" 
-          className="search-input" 
-          placeholder="🔍 Buscar por título o contenido..." 
+        <input
+          type="text"
+          className="search-input"
+          placeholder="🔍 Buscar por título o contenido..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
@@ -238,7 +259,7 @@ export default function ArticlesView({
           }}
         />
         <div className="search-filters">
-          <select 
+          <select
             className="search-select"
             value={searchCategory}
             onChange={(e) => setSearchCategory(e.target.value)}
@@ -251,7 +272,7 @@ export default function ArticlesView({
             <option value="all">📚 Todas las épocas</option>
             {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
           </select>
-          <select 
+          <select
             className="search-select"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
@@ -262,10 +283,10 @@ export default function ArticlesView({
             }}
           >
             <option value="newest">📅 Más recientes</option>
-            <option value="oldest"> Más antiguos</option>
+            <option value="oldest">Más antiguos</option>
           </select>
           {(searchTerm || searchCategory !== "all" || sortBy !== "newest") && (
-            <button onClick={clearFilters} style={{...btnPrimary, background: isDarkMode ? "#fff" : "#fff", color: "#1e3a8a", border: `2px solid ${isDarkMode ? "#fbbf24" : "#1d4ed8"}`, padding: "10px 16px"}}>🧹 Limpiar</button>
+            <button onClick={clearFilters} style={{...btnPrimary, background: "#fff", color: "#1e3a8a", border: `2px solid ${isDarkMode ? "#fbbf24" : "#1d4ed8"}`, padding: "10px 16px"}}>🧹 Limpiar</button>
           )}
         </div>
         <div className="search-results-info" style={{ color: isDarkMode ? "#94a3b8" : "#64748b" }}>
@@ -273,17 +294,15 @@ export default function ArticlesView({
           {searchTerm && <span> para "{searchTerm}"</span>}
         </div>
       </div>
-
       {CATEGORIES.map(cat => {
         const catArticles = articlesByCategory[cat];
         if (catArticles.length === 0) return null;
         const isOpen = openCategories.includes(cat);
         const hasNew = catArticles.some(isNew);
-
         return (
           <div key={cat} style={{ marginBottom: 15 }}>
-            <div 
-              className={`accordion-header ${isOpen ? 'active' : ''}`} 
+            <div
+              className={`accordion-header ${isOpen ? 'active' : ''}`}
               onClick={() => toggleCategory(cat)}
               style={{
                 background: isDarkMode ? "#1e293b" : "#e2e8f0",
@@ -299,9 +318,9 @@ export default function ArticlesView({
             </div>
             <div className={`accordion-content ${isOpen ? '' : 'closed'}`}>
               {catArticles.map(a => (
-                <ArticleCard 
-                  key={a.id} 
-                  a={a} 
+                <ArticleCard
+                  key={a.id}
+                  a={a}
                   isNew={isNew}
                   isDarkMode={isDarkMode}
                   onOpen={openArticle}
@@ -311,7 +330,6 @@ export default function ArticlesView({
           </div>
         );
       })}
-
       {filteredAndSortedArticles.length === 0 && (
         <div style={{ textAlign: "center", padding: 40, background: isDarkMode ? "#1e293b" : "#fff", borderRadius: 12, border: `2px dashed ${isDarkMode ? "#475569" : "#cbd5e1"}` }}>
           <p style={{ fontSize: 40, marginBottom: 10 }}>🔍</p>
